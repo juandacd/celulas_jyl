@@ -7,22 +7,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --ink: #1A1208;
-  --paper: #FDFAF5;
-  --warm-white: #F7F2E8;
-  --gold: #B8860B;
-  --gold-bright: #D4A017;
-  --gold-pale: #F5EDD0;
-  --brown: #6B3F1E;
-  --brown-light: #9A6240;
-  --muted: #8A7660;
-  --border: #E2D9C8;
-  --border-focus: #B8860B;
-  --success: #3D6B4F;
-  --danger: #8B2020;
-  --shadow-sm: 0 2px 8px rgba(26,18,8,0.08);
-  --shadow-md: 0 8px 32px rgba(26,18,8,0.12);
-  --shadow-lg: 0 20px 60px rgba(26,18,8,0.18);
+  /* ── NUEVA PALETA ── */
+  --ink: #f5f2ff;                    /* antes #1A1208 — texto principal */
+  --paper: #1a0a2e;                  /* antes #FDFAF5 — fondo principal */
+  --warm-white: #22103d;             /* antes #F7F2E8 — fondo cálido secundario */
+  --gold: #e8421a;                   /* antes #B8860B — acento principal (naranja/rojo) */
+  --gold-bright: #ff7a4d;            /* antes #D4A017 — acento brillante */
+  --gold-pale: #2a1550;              /* antes #F5EDD0 — fondo pálido de chips seleccionados */
+  --brown: #6b52e0;                  /* antes #6B3F1E — color de títulos/botones (violeta) */
+  --brown-light: #9c87ea;            /* antes #9A6240 — violeta claro */
+  --muted: #9a96b8;                  /* antes #8A7660 — texto suave */
+  --border: #2e1f52;                 /* antes #E2D9C8 — bordes */
+  --border-focus: #e8421a;           /* antes #B8860B — borde foco (naranja) */
+  --success: #3a1fc4;                /* antes #3D6B4F — éxito (azul) */
+  --danger: #c0392b;                 /* antes #8B2020 — peligro */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.45);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.55);
   --radius: 14px;
   --radius-sm: 8px;
 }
@@ -45,8 +46,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    radial-gradient(ellipse at 20% 10%, rgba(184,134,11,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 90%, rgba(107,63,30,0.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 10%, rgba(232,66,26,0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(107,82,224,0.12) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -54,7 +55,7 @@ body::before {
 /* ── HEADER ── */
 .header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(253,250,245,0.92);
+  background: rgba(26,10,46,0.92);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
@@ -67,7 +68,7 @@ body::before {
 .logo {
   font-family: 'Lora', serif;
   font-size: 1.1rem;
-  color: var(--brown);
+  color: var(--brown-light);
   display: flex; align-items: center; gap: 10px;
 }
 .logo-dot {
@@ -105,7 +106,7 @@ body::before {
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
-.tab:hover:not(.active) { color: var(--brown); }
+.tab:hover:not(.active) { color: var(--brown-light); }
 
 /* ── PAGES ── */
 .page { display: none; position: relative; z-index: 1; }
@@ -134,7 +135,7 @@ body::before {
 .hero-title {
   font-family: 'Lora', serif;
   font-size: clamp(1.8rem, 4vw, 2.4rem);
-  color: var(--brown);
+  color: var(--brown-light);
   line-height: 1.15;
   margin-bottom: 12px;
 }
@@ -166,7 +167,7 @@ body::before {
 
 /* ── SECTION CARD ── */
 .card {
-  background: #fff;
+  background: #22103d;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 28px;
@@ -180,7 +181,7 @@ body::before {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 24px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--warm-white);
+  border-bottom: 1px solid var(--border);
 }
 .card-icon {
   width: 36px; height: 36px;
@@ -192,7 +193,7 @@ body::before {
 .card-title {
   font-family: 'Lora', serif;
   font-size: 1rem;
-  color: var(--brown);
+  color: var(--brown-light);
 }
 
 /* ── FIELDS ── */
@@ -233,11 +234,11 @@ input[type=date], input[type=number], select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--border-focus);
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(184,134,11,0.1);
+  background: #22103d;
+  box-shadow: 0 0 0 3px rgba(232,66,26,0.15);
 }
 select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%238A7660' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%239a96b8' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px; cursor: pointer;
@@ -258,11 +259,11 @@ textarea { resize: vertical; min-height: 88px; }
   transition: all 0.18s;
   user-select: none;
 }
-.chip:hover { border-color: var(--gold); color: var(--brown); background: var(--gold-pale); }
+.chip:hover { border-color: var(--gold); color: var(--ink); background: var(--gold-pale); }
 .chip.on {
   border-color: var(--gold);
   background: var(--gold-pale);
-  color: var(--brown);
+  color: var(--ink);
   font-weight: 600;
 }
 .chip-dot {
@@ -283,11 +284,11 @@ textarea { resize: vertical; min-height: 88px; }
 /* ── ALERT BOX ── */
 .alert-box {
   background: var(--gold-pale);
-  border: 1px solid rgba(184,134,11,0.3);
+  border: 1px solid rgba(232,66,26,0.3);
   border-radius: var(--radius-sm);
   padding: 14px 16px;
   font-size: 0.83rem;
-  color: var(--brown);
+  color: var(--brown-light);
   margin-top: 12px;
   line-height: 1.6;
 }
@@ -308,12 +309,12 @@ textarea { resize: vertical; min-height: 88px; }
   cursor: pointer;
   transition: all 0.2s;
   letter-spacing: 0.03em;
-  box-shadow: 0 4px 16px rgba(107,63,30,0.25);
+  box-shadow: 0 4px 16px rgba(107,82,224,0.35);
 }
 .btn-primary:hover {
   background: var(--gold);
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(184,134,11,0.35);
+  box-shadow: 0 8px 28px rgba(232,66,26,0.45);
 }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled {
@@ -336,13 +337,14 @@ textarea { resize: vertical; min-height: 88px; }
 /* ── SUCCESS MODAL ── */
 .modal-bg {
   display: none; position: fixed; inset: 0; z-index: 200;
-  background: rgba(26,18,8,0.55);
+  background: rgba(10,5,20,0.75);
   backdrop-filter: blur(6px);
   align-items: center; justify-content: center;
 }
 .modal-bg.show { display: flex; }
 .modal {
-  background: #fff;
+  background: #22103d;
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 52px 44px;
   text-align: center;
@@ -357,7 +359,7 @@ textarea { resize: vertical; min-height: 88px; }
 .modal-emoji { font-size: 3.5rem; margin-bottom: 20px; }
 .modal-title {
   font-family: 'Lora', serif;
-  font-size: 1.5rem; color: var(--brown);
+  font-size: 1.5rem; color: var(--brown-light);
   margin-bottom: 10px;
 }
 .modal-text { color: var(--muted); font-size: 0.9rem; line-height: 1.7; margin-bottom: 28px; }
@@ -379,13 +381,13 @@ textarea { resize: vertical; min-height: 88px; }
 
 /* ── CONFIG BANNER ── */
 .config-banner {
-  background: #FFF3CD;
-  border: 1px solid #FFEAA7;
+  background: rgba(58,31,196,0.2);
+  border: 1px solid rgba(58,31,196,0.4);
   border-radius: var(--radius-sm);
   padding: 14px 18px;
   margin-bottom: 24px;
   font-size: 0.83rem;
-  color: #856404;
+  color: var(--brown-light);
   line-height: 1.6;
 }
 .config-banner strong { display: block; margin-bottom: 4px; }
@@ -447,27 +449,25 @@ textarea { resize: vertical; min-height: 88px; }
       <label>¿A qué Líder de 12 perteneces? <span class="req">*</span></label>
       <select id="i-l12" onchange="updateProg(1)">
         <option value="">— Selecciona tu líder de 12 —</option>
-        <option>Alejandro Muñoz y Diana Carvajal</option>
-        <option>Álex Romero y Natalia Mesa</option>
-        <option>Edwin Abdala y Angélica Naranjo</option>
-        <option>Érick Ausique y Dayra Barrero</option>
-        <option>Grupo anexo Pastores Leyva</option>
-        <option>Guillermo Estrada y Berlee Cuervo</option>
-        <option>Jhonatan Herrera y Leidy Montoya</option>
-        <option>Juan Carlos López y Viviana Yara</option>
-        <option>Juan Pablo y Vanesa Sosa</option>
-        <option>Leonardo Puerta y Ángela López</option>
-        <option>Liliana Gutiérrez</option>
-        <option>No conozco a mi líder de 12</option>
-        <option>Óscar García y María Mercedes Vélez</option>
-        <option>Santiago Carrasquilla y Sara Alzate</option>
-        <option>Wilson Reyes y Charlin Briceño</option>
+        <option>Ps Jhonatan y Leidy Herrera</option>
+        <option>Aleja Leiva</option>
+        <option>Camila Patiño</option>
+        <option>Daniela Martinez</option>
+        <option>Juan David Correa</option>
+        <option>Manuela Giraldo</option>
+        <option>Michelle Sanchez</option>
+        <option>Miguel Estrada</option>
+        <option>Samuel Mesa</option>
+        <option>Samuel Leiva</option>
+        <option>Santiago Giraldo</option>
+        <option>Valentina Castrillon</option>
+        <option>Wilson y Aide</option>
       </select>
     </div>
 
     <div class="field">
-      <label>Co-líder o apoyo</label>
-      <input type="text" id="i-colider" placeholder="Nombre del co-líder (opcional)">
+      <label>Anfitrión o Timoteo</label>
+      <input type="text" id="i-colider" placeholder="Nombre del anfitrión o timoteo (opcional)">
     </div>
   </div>
 
@@ -479,8 +479,9 @@ textarea { resize: vertical; min-height: 88px; }
     </div>
 
     <div class="field">
-      <label>Nombre de tu célula <span class="req">*</span></label>
-      <input type="text" id="i-nombre-cel" placeholder="Ej: Familia Rodríguez, Hombres Norte..." oninput="updateProg(1)">
+      <label>Nombre de tu célula <span style="color:var(--muted);font-weight:400">(opcional · solo informativo)</span></label>
+      <input type="text" id="i-nombre-cel" placeholder="Ej: Familia Rodríguez, Hombres Norte...">
+      <p class="hint">El nombre oficial de tu célula será tu nombre completo. Este campo es solo para referencia personal.</p>
     </div>
 
     <div class="field">
@@ -543,6 +544,7 @@ textarea { resize: vertical; min-height: 88px; }
         <label>Comuna <span class="req">*</span></label>
         <select id="i-comuna" onchange="updateProg(1)">
           <option value="">— Selecciona —</option>
+          <optgroup label="Medellín — Comunas">
           <option>Popular (1)</option><option>Santa Cruz (2)</option>
           <option>Manrique (3)</option><option>Aranjuez (4)</option>
           <option>Castilla (5)</option><option>Doce de Octubre (6)</option>
@@ -551,12 +553,22 @@ textarea { resize: vertical; min-height: 88px; }
           <option>Laureles-Estadio (11)</option><option>La América (12)</option>
           <option>San Javier (13)</option><option>El Poblado (14)</option>
           <option>Guayabal (15)</option><option>Belén (16)</option>
+          </optgroup>
+          <optgroup label="Medellín — Corregimientos">
           <option>Corregimiento San Sebastián de Palmitas</option>
           <option>Corregimiento San Cristóbal</option>
           <option>Corregimiento Altavista</option>
           <option>Corregimiento San Antonio de Prado</option>
           <option>Corregimiento Santa Elena</option>
-          <option>Fuera de Medellín</option>
+          </optgroup>
+          <optgroup label="Área Metropolitana">
+          <option>Bello</option>
+          <option>Envigado</option>
+          <option>Sabaneta</option>
+          <option>Itagüí</option>
+          <option>Caldas</option>
+          </optgroup>
+          <option>Otro municipio</option>
         </select>
       </div>
     </div>
@@ -612,21 +624,19 @@ textarea { resize: vertical; min-height: 88px; }
       <label>¿A qué Líder de 12 perteneces? <span class="req">*</span></label>
       <select id="r-l12" onchange="filtrarLideres(); updateProg(2)">
         <option value="">— Primero selecciona tu líder de 12 —</option>
-        <option>Alejandro Muñoz y Diana Carvajal</option>
-        <option>Álex Romero y Natalia Mesa</option>
-        <option>Edwin Abdala y Angélica Naranjo</option>
-        <option>Érick Ausique y Dayra Barrero</option>
-        <option>Grupo anexo Pastores Leyva</option>
-        <option>Guillermo Estrada y Berlee Cuervo</option>
-        <option>Jhonatan Herrera y Leidy Montoya</option>
-        <option>Juan Carlos López y Viviana Yara</option>
-        <option>Juan Pablo y Vanesa Sosa</option>
-        <option>Leonardo Puerta y Ángela López</option>
-        <option>Liliana Gutiérrez</option>
-        <option>No conozco a mi líder de 12</option>
-        <option>Óscar García y María Mercedes Vélez</option>
-        <option>Santiago Carrasquilla y Sara Alzate</option>
-        <option>Wilson Reyes y Charlin Briceño</option>
+        <option>Ps Jhonatan y Leidy Herrera</option>
+        <option>Aleja Leiva</option>
+        <option>Camila Patiño</option>
+        <option>Daniela Martinez</option>
+        <option>Juan David Correa</option>
+        <option>Manuela Giraldo</option>
+        <option>Michelle Sanchez</option>
+        <option>Miguel Estrada</option>
+        <option>Samuel Mesa</option>
+        <option>Samuel Leiva</option>
+        <option>Santiago Giraldo</option>
+        <option>Valentina Castrillon</option>
+        <option>Wilson y Aide</option>
       </select>
     </div>
 
@@ -724,23 +734,16 @@ textarea { resize: vertical; min-height: 88px; }
     <div class="field-row">
       <div class="field">
         <label>Total asistentes <span class="req">*</span></label>
-        <input type="number" id="r-total" min="0" placeholder="0" oninput="calcAsistencia()">
+        <input type="number" id="r-total" min="0" placeholder="0">
       </div>
-      <div class="field">
-        <label>Miembros regulares <span class="req">*</span></label>
-        <input type="number" id="r-regulares" min="0" placeholder="0" oninput="calcAsistencia()">
-      </div>
-    </div>
-    <div class="field-row">
       <div class="field">
         <label>Visitantes nuevos <span class="req">*</span></label>
         <input type="number" id="r-nuevos" min="0" placeholder="0">
-        <p class="hint" id="calc-hint" style="color: var(--success)"></p>
       </div>
-      <div class="field">
-        <label>Miembros que fueron a la iglesia este fin de semana <span class="req">*</span></label>
-        <input type="number" id="r-iglesia" min="0" placeholder="0">
-      </div>
+    </div>
+    <div class="field">
+      <label>Miembros que fueron a S1 este fin de semana <span class="req">*</span></label>
+      <input type="number" id="r-iglesia" min="0" placeholder="0">
     </div>
   </div>
 
@@ -809,8 +812,6 @@ textarea { resize: vertical; min-height: 88px; }
 // CONFIGURACIÓN — PEGA AQUÍ LA URL DE TU APPS SCRIPT
 // ══════════════════════════════════════════════════
 const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzhgKbbt2J40z6P00Hq9yllzHdE5hRodsIGXmp2jP1PNBoa_WgcQ171CRGLQ9Pj5Co7yQ/exec";
-// Ejemplo:
-// const BACKEND_URL = "https://script.google.com/macros/s/AKfycby.../exec";
 // ══════════════════════════════════════════════════
 
 // Mapa de líderes cargado desde el backend
@@ -919,7 +920,6 @@ function updateProg(form) {
       document.getElementById('i-nombre').value,
       document.getElementById('i-wa').value,
       document.getElementById('i-l12').value,
-      document.getElementById('i-nombre-cel').value,
       document.getElementById('i-hora').value,
       document.getElementById('i-comuna').value,
       getChip('i-red'),
@@ -927,7 +927,7 @@ function updateProg(form) {
       getChip('i-modalidad'),
       getChips('i-dias').length > 0 ? 'x' : '',
     ].filter(Boolean).length;
-    const pct = Math.round((filled / 10) * 100);
+    const pct = Math.round((filled / 9) * 100);
     document.getElementById('pb1').style.width = pct + '%';
     document.getElementById('pl1').textContent = pct + '%';
   } else {
@@ -956,7 +956,7 @@ async function enviarInscripcion() {
   const mod    = getChip('i-modalidad');
   const dias   = getChips('i-dias');
 
-  if (!nombre || !wa || !l12 || !cel || !hora || !comuna || !red || !tipo || !mod || !dias.length) {
+  if (!nombre || !wa || !l12 || !hora || !comuna || !red || !tipo || !mod || !dias.length) {
     alert('Por favor completa todos los campos obligatorios (marcados con *)');
     return;
   }
@@ -978,7 +978,6 @@ async function enviarInscripcion() {
     'Tu célula quedó registrada. Ya puedes llenar el reporte semanal cada semana.'
   );
 
-  // Recargar mapa de líderes para que aparezca en el reporte
   await cargarLideres();
 }
 
@@ -1007,7 +1006,6 @@ async function enviarReporte() {
     diaSemana: document.getElementById('r-dia').value,
     hora: document.getElementById('r-hora').value,
     totalAsistentes: document.getElementById('r-total').value || 0,
-    miembrosRegulares: document.getElementById('r-regulares').value || 0,
     visitantesNuevos: document.getElementById('r-nuevos').value || 0,
     asisitieronIglesia: document.getElementById('r-iglesia').value || 0,
     tema: document.getElementById('r-tema').value.trim(),
@@ -1029,7 +1027,6 @@ async function enviar(data, btnId, emoji, titulo, texto) {
   btn.innerHTML = '<span class="spinner"></span>Guardando...';
 
   if (BACKEND_URL === "PEGA_AQUÍ_LA_URL_DE_TU_APPS_SCRIPT_WEB_APP") {
-    // Modo demo sin backend
     await new Promise(r => setTimeout(r, 1200));
     showModal(emoji, titulo, texto + '\n\n⚠️ Modo demo: conecta el backend para guardar en Google Sheets.');
     btn.disabled = false;
