@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Células J&L</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --ink: #f5f2ff;
+  --paper: #1a0a2e;
+  --warm-white: #22103d;
+  --gold: #e8421a;
+  --gold-bright: #ff7a4d;
+  --gold-pale: #2a1550;
+  --brown: #6b52e0;
+  --brown-light: #9c87ea;
+  --muted: #9a96b8;
+  --border: #2e1f52;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md: 0 8px 32px rgba(0,0,0,0.45);
+  --radius: 14px;
+  --radius-sm: 8px;
+
+  /* Colores por red */
+  --red-familias: #e8421a;
+  --red-hombres: #6b52e0;
+  --red-mujeres: #ec4899;
+  --red-jovenes: #f59e0b;
+  --red-teens: #22c55e;
+  --red-kids: #06b6d4;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(232,66,26,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 90%, rgba(107,82,224,0.10) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ── LOGIN ─────────────────────────────────────── */
+#login-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper);
+}
+.login-box {
+  background: #22103d;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 52px 44px;
+  text-align: center;
+  max-width: 380px; width: 90%;
+  box-shadow: var(--shadow-md);
+}
+.login-logo {
+  font-family: 'Lora', serif;
+  font-size: 1.5rem;
+  color: var(--brown-light);
+  margin-bottom: 8px;
+}
+.login-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-bottom: 32px;
+}
+.login-box input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.login-box input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(232,66,26,0.15);
+}
+.login-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--brown);
+  color: #fff; border: none;
+  border-radius: var(--radius-sm);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700; font-size: 0.9rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.login-btn:hover { background: var(--gold); }
+.login-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  display: none;
+}
+.login-emoji { font-size: 2.5rem; margin-bottom: 16px; }
+
+/* ── HEADER ─────────────────────────────────────── */
+#app { display: none; position: relative; z-index: 1; }
+
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(26,10,46,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px;
+}
+.logo {
+  font-family: 'Lora', serif;
+  font-size: 1.05rem; color: var(--brown-light);
+  display: flex; align-items: center; gap: 10px;
+}
+.logo-dot {
+  width: 8px; height: 8px; background: var(--gold);
+  border-radius: 50%; animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:0.5; transform:scale(0.8); }
+}
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+}
+.last-update {
+  font-size: 0.75rem; color: var(--muted);
+}
+.btn-refresh {
+  padding: 7px 16px;
+  background: var(--gold-pale);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--brown-light);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-refresh:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── MAIN LAYOUT ────────────────────────────────── */
+.main {
+  max-width: 1400px; margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+/* ── PAGE TITLE ─────────────────────────────────── */
+.page-title {
+  margin-bottom: 32px;
+}
+.page-eyebrow {
+  font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 8px;
+}
+.page-h1 {
+  font-family: 'Lora', serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  color: var(--brown-light); line-height: 1.15;
+}
+
+/* ── METRIC CARDS ───────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.metric-card {
+  background: #22103d;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative; overflow: hidden;
+}
+.metric-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.metric-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent, var(--brown));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.metric-icon {
+  font-size: 1.4rem; margin-bottom: 12px;
+}
+.metric-value {
+  font-family: 'Lora', serif;
+  font-size: 2.2rem; font-weight: 600;
+  color: var(--ink); line-height: 1;
+  margin-bottom: 6px;
+}
+.metric-label {
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.metric-sub {
+  font-size: 0.75rem; color: var(--muted);
+  margin-top: 8px;
+}
+.metric-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.7rem; font-weight: 700;
+  margin-top: 8px;
+}
+.badge-up { background: rgba(34,197,94,0.15); color: var(--success); }
+.badge-neutral { background: rgba(156,135,234,0.15); color: var(--brown-light); }
+
+/* ── SECTION CARD ───────────────────────────────── */
+.card {
+  background: #22103d;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.card-icon {
+  width: 34px; height: 34px;
+  background: var(--gold-pale); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+}
+.card-title {
+  font-family: 'Lora', serif;
+  font-size: 1rem; color: var(--brown-light);
+}
+
+/* ── TWO COLUMN LAYOUT ──────────────────────────── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+@media(max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+.three-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+@media(max-width: 900px) { .three-col { grid-template-columns: 1fr; } }
+
+/* ── MAPA ───────────────────────────────────────── */
+#mapa {
+  height: 480px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.leaflet-container {
+  background: #0f0520 !important;
+}
+
+/* Leyenda del mapa */
+.map-legend {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-top: 14px;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--muted);
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── GRÁFICAS ───────────────────────────────────── */
+.chart-wrap {
+  position: relative;
+  height: 260px;
+}
+
+/* ── TABLA ──────────────────────────────────────── */
+.table-filters {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin-bottom: 16px;
+}
+.filter-select {
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%239a96b8' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+.filter-select:focus { outline: none; border-color: var(--gold); }
+
+.filter-input {
+  padding: 8px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.82rem;
+  flex: 1; min-width: 160px;
+}
+.filter-input:focus { outline: none; border-color: var(--gold); }
+.filter-input::placeholder { color: var(--muted); }
+
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 0.82rem;
+}
+thead tr {
+  background: var(--gold-pale);
+  border-bottom: 1px solid var(--border);
+}
+th {
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--brown-light);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(46,31,82,0.5);
+  color: var(--ink);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background 0.15s; }
+tbody tr:hover { background: rgba(107,82,224,0.07); }
+
+.table-count {
+  font-size: 0.78rem; color: var(--muted);
+  margin-top: 10px; text-align: right;
+}
+
+/* ── BADGES / CHIPS ─────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.72rem; font-weight: 700;
+  white-space: nowrap;
+}
+.badge-familias { background: rgba(232,66,26,0.15); color: #ff8060; }
+.badge-hombres  { background: rgba(107,82,224,0.15); color: var(--brown-light); }
+.badge-mujeres  { background: rgba(236,72,153,0.15); color: #f472b6; }
+.badge-jovenes  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.badge-teens    { background: rgba(34,197,94,0.15); color: #4ade80; }
+.badge-kids     { background: rgba(6,182,212,0.15); color: #22d3ee; }
+.badge-si       { background: rgba(34,197,94,0.15); color: #4ade80; }
+.badge-no       { background: rgba(239,68,68,0.15); color: #f87171; }
+
+/* ── DONUT CHART CONTAINER ──────────────────────── */
+.donut-wrap {
+  display: flex; align-items: center; gap: 24px;
+}
+.donut-chart { position: relative; height: 200px; width: 200px; flex-shrink: 0; }
+.donut-legend { flex: 1; }
+.donut-legend-item {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px; font-size: 0.82rem; color: var(--ink);
+}
+.donut-legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.donut-legend-pct {
+  margin-left: auto; font-weight: 700; color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* ── LOADING ─────────────────────────────────────── */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--paper);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+}
+.loading-spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+  font-size: 0.85rem; color: var(--muted);
+}
+
+/* ── EMPTY STATE ─────────────────────────────────── */
+.empty {
+  text-align: center; padding: 40px 20px;
+  color: var(--muted); font-size: 0.85rem;
+}
+.empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* ── POR RED GRID ────────────────────────────────── */
+.red-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.red-item {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 12px;
+  text-align: center;
+}
+.red-item-emoji { font-size: 1.4rem; margin-bottom: 6px; }
+.red-item-count {
+  font-family: 'Lora', serif;
+  font-size: 1.6rem; color: var(--ink);
+  line-height: 1;
+}
+.red-item-name {
+  font-size: 0.72rem; color: var(--muted);
+  margin-top: 4px; text-transform: uppercase;
+  letter-spacing: 0.06em; font-weight: 600;
+}
+
+/* ── TOAST ───────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: #22103d; border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  font-size: 0.82rem; color: var(--ink);
+  box-shadow: var(--shadow-md);
+  z-index: 300;
+  transform: translateY(80px); opacity: 0;
+  transition: all 0.3s ease;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* ── RESPONSIVE ──────────────────────────────────── */
+@media(max-width: 640px) {
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .main { padding: 20px 16px 60px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-emoji">🔐</div>
+    <div class="login-logo">Células J&amp;L</div>
+    <div class="login-sub">Dashboard de control · Solo líderes</div>
+    <input type="password" id="pass-input" placeholder="Contraseña"
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="login-error">Contraseña incorrecta</div>
+  </div>
+</div>
+
+<!-- ══ LOADING ══ -->
+<div class="loading-overlay" id="loading" style="display:none">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Cargando datos...</div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-dot"></div>
+        Células J&amp;L — Dashboard
+      </div>
+      <div class="header-right">
+        <span class="last-update" id="last-update"></span>
+        <button class="btn-refresh" onclick="recargar()">↻ Actualizar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TÍTULO -->
+    <div class="page-title">
+      <div class="page-eyebrow">Control semanal</div>
+      <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+    </div>
+
+    <!-- MÉTRICAS PRINCIPALES -->
+    <div class="metrics-grid" id="metrics-grid">
+      <div class="metric-card" style="--accent: var(--gold)">
+        <div class="metric-icon">🏘️</div>
+        <div class="metric-value" id="m-total">—</div>
+        <div class="metric-label">Células Inscritas</div>
+        <div class="metric-sub" id="m-activas">— activas este mes</div>
+      </div>
+      <div class="metric-card" style="--accent: var(--brown)">
+        <div class="metric-icon">👥</div>
+        <div class="metric-value" id="m-semana">—</div>
+        <div class="metric-label">Asistentes esta semana</div>
+        <div class="metric-sub" id="m-semana-rep">— reportes</div>
+      </div>
+      <div class="metric-card" style="--accent: #22c55e">
+        <div class="metric-icon">🌍</div>
+        <div class="metric-value" id="m-nuevos">—</div>
+        <div class="metric-label">Nuevos este mes</div>
+        <div class="metric-sub">Visitantes por primera vez</div>
+      </div>
+      <div class="metric-card" style="--accent: #f59e0b">
+        <div class="metric-icon">⛪</div>
+        <div class="metric-value" id="m-iglesia">—</div>
+        <div class="metric-label">Fueron a S1</div>
+        <div class="metric-sub">Miembros este mes</div>
+      </div>
+      <div class="metric-card" style="--accent: #ec4899">
+        <div class="metric-icon">📋</div>
+        <div class="metric-value" id="m-reportes">—</div>
+        <div class="metric-label">Reportes este mes</div>
+        <div class="metric-sub" id="m-cobertura">—% de cobertura</div>
+      </div>
+    </div>
+
+    <!-- GRÁFICA DE TENDENCIA + DONUT POR RED -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-row">
+            <div class="card-icon">📈</div>
+            <div class="card-title">Tendencia semanal</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-tendencia"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-row">
+            <div class="card-icon">🥧</div>
+            <div class="card-title">Células por Red</div>
+          </div>
+        </div>
+        <div class="donut-wrap" id="donut-wrap">
+          <div class="donut-chart"><canvas id="chart-redes"></canvas></div>
+          <div class="donut-legend" id="donut-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRÁFICA NUEVOS vs S1 -->
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-row">
+            <div class="card-icon">🌱</div>
+            <div class="card-title">Visitantes nuevos por semana</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-nuevos"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-row">
+            <div class="card-icon">⛪</div>
+            <div class="card-title">Asistencia a S1 por semana</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-iglesia"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAPA -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-icon">🗺️</div>
+          <div class="card-title">Mapa de Células — Medellín</div>
+        </div>
+        <span style="font-size:0.78rem; color:var(--muted)" id="map-count"></span>
+      </div>
+      <div id="mapa"></div>
+      <div class="map-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#e8421a"></div>Familias</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6b52e0"></div>Hombres</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>Mujeres</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Jóvenes</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Teens</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Kids</div>
+      </div>
+    </div>
+
+    <!-- TABLA DE REPORTES -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-icon">📋</div>
+          <div class="card-title">Reportes semanales</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="table-filters">
+        <input class="filter-input" type="text" id="f-buscar"
+               placeholder="🔍 Buscar líder..."
+               oninput="filtrarTabla()">
+        <select class="filter-select" id="f-l12" onchange="filtrarTabla()">
+          <option value="">Todos los L12</option>
+        </select>
+        <select class="filter-select" id="f-red" onchange="filtrarTabla()">
+          <option value="">Todas las redes</option>
+          <option>Familias</option>
+          <option>Hombres</option>
+          <option>Mujeres</option>
+          <option>Jóvenes</option>
+          <option>Teens</option>
+          <option>Kids</option>
+        </select>
+        <select class="filter-select" id="f-realizo" onchange="filtrarTabla()">
+          <option value="">Realizadas y no</option>
+          <option value="si">Solo realizadas</option>
+          <option value="no">Solo no realizadas</option>
+        </select>
+        <select class="filter-select" id="f-semanas" onchange="filtrarTabla()">
+          <option value="4">Últimas 4 semanas</option>
+          <option value="8">Últimas 8 semanas</option>
+          <option value="12">Últimas 12 semanas</option>
+          <option value="0">Todas</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabla-reportes">
+          <thead>
+            <tr>
+              <th>Líder</th>
+              <th>L12</th>
+              <th>Fecha</th>
+              <th>¿Realizada?</th>
+              <th>Red</th>
+              <th>Modalidad</th>
+              <th>Asistentes</th>
+              <th>Nuevos</th>
+              <th>Fueron S1</th>
+              <th>Tema</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-body"></tbody>
+        </table>
+      </div>
+      <div class="table-count" id="table-count"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════
+const BACKEND = "https://script.google.com/macros/s/AKfycbw5ZADK4IgfyUV2Aho4EoEgBpHG_DgHOTht9mtj-XqGTsh7Sz4yyK8sT6B-7CUgIsfw8w/exec";
+const PASS_KEY = "dash_pass";
+
+// Estado global
+let dashData   = null;
+let reportes   = [];
+let celulas    = [];
+let mapa       = null;
+let chartTend  = null;
+let chartRedes = null;
+let chartNuev  = null;
+let chartIgl   = null;
+
+// ── LOGIN ──────────────────────────────────────────
+function doLogin() {
+  const pass = document.getElementById('pass-input').value.trim();
+  if (!pass) return;
+
+  // Verificar contra el backend
+  showLoading(true);
+  fetch(`${BACKEND}?action=getDashboard&pass=${encodeURIComponent(pass)}`)
+    .then(r => r.json())
+    .then(json => {
+      if (json.success) {
+        sessionStorage.setItem(PASS_KEY, pass);
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        iniciarDashboard(json.data, pass);
+      } else {
+        document.getElementById('login-error').style.display = 'block';
+        showLoading(false);
+      }
+    })
+    .catch(() => {
+      document.getElementById('login-error').textContent = 'Error de conexión';
+      document.getElementById('login-error').style.display = 'block';
+      showLoading(false);
+    });
+}
+
+// ── CARGAR TODO ────────────────────────────────────
+async function iniciarDashboard(dash, pass) {
+  dashData = dash;
+  renderMetricas(dash);
+  renderTendencia(dash.tendencia);
+  renderDonutRedes(dash.porRed);
+
+  // Cargar reportes y células en paralelo
+  const [repJson, celJson] = await Promise.all([
+    fetch(`${BACKEND}?action=getReportes&pass=${encodeURIComponent(pass)}`).then(r => r.json()),
+    fetch(`${BACKEND}?action=getInscripciones&pass=${encodeURIComponent(pass)}`).then(r => r.json())
+  ]);
+
+  if (repJson.success) {
+    reportes = repJson.data;
+    renderTabla(reportes);
+    poblarFiltroL12(reportes);
+    renderGraficasExtra(reportes);
+  }
+
+  if (celJson.success) {
+    celulas = celJson.data;
+    renderMapa(celulas);
+  }
+
+  document.getElementById('last-update').textContent =
+    'Actualizado: ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+
+  showLoading(false);
+}
+
+async function recargar() {
+  const pass = sessionStorage.getItem(PASS_KEY);
+  if (!pass) return;
+  showLoading(true);
+  try {
+    const json = await fetch(`${BACKEND}?action=getDashboard&pass=${encodeURIComponent(pass)}`).then(r => r.json());
+    if (json.success) {
+      await iniciarDashboard(json.data, pass);
+      toast('✓ Datos actualizados');
+    }
+  } catch(e) { toast('Error al actualizar'); showLoading(false); }
+}
+
+// ── MÉTRICAS ───────────────────────────────────────
+function renderMetricas(d) {
+  setText('m-total',    d.totalCelulas);
+  setText('m-activas',  `${d.celulasActivas} activas este mes`);
+  setText('m-semana',   d.asistentesSemana.toLocaleString('es-CO'));
+  setText('m-semana-rep', `${d.reportesSemana} reportes`);
+  setText('m-nuevos',   d.nuevosMes.toLocaleString('es-CO'));
+  setText('m-iglesia',  d.asistieronIglesiaMes.toLocaleString('es-CO'));
+  setText('m-reportes', d.reportesMes);
+
+  const cobertura = d.totalCelulas > 0
+    ? Math.round((d.celulasActivas / d.totalCelulas) * 100) : 0;
+  setText('m-cobertura', `${cobertura}% de cobertura`);
+}
+
+// ── TENDENCIA ──────────────────────────────────────
+function renderTendencia(tendencia) {
+  const ctx = document.getElementById('chart-tendencia').getContext('2d');
+  if (chartTend) chartTend.destroy();
+
+  const labels = tendencia.map(t => t.label);
+  const vals   = tendencia.map(t => t.asistentes);
+
+  chartTend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Asistentes',
+        data: vals,
+        borderColor: '#e8421a',
+        backgroundColor: 'rgba(232,66,26,0.08)',
+        pointBackgroundColor: '#e8421a',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2.5,
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(46,31,82,0.6)' }, ticks: { color: '#9a96b8', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(46,31,82,0.6)' }, ticks: { color: '#9a96b8', font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ── DONUT REDES ────────────────────────────────────
+function renderDonutRedes(porRed) {
+  const colores = {
+    'Familias': '#e8421a', 'Hombres': '#6b52e0', 'Mujeres': '#ec4899',
+    'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4'
+  };
+  const emojis = { 'Familias':'👨‍👩‍👧','Hombres':'👨','Mujeres':'👩','Jóvenes':'🔥','Teens':'🎒','Kids':'🌟' };
+
+  const labels = Object.keys(porRed);
+  const vals   = Object.values(porRed);
+  const total  = vals.reduce((a, b) => a + b, 0);
+  const bgColors = labels.map(l => colores[l] || '#9c87ea');
+
+  const ctx = document.getElementById('chart-redes').getContext('2d');
+  if (chartRedes) chartRedes.destroy();
+
+  chartRedes = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} células` }
+      }}
+    }
+  });
+
+  // Leyenda custom
+  const leg = document.getElementById('donut-legend');
+  leg.innerHTML = labels.map((l, i) => `
+    <div class="donut-legend-item">
+      <div class="donut-legend-dot" style="background:${bgColors[i]}"></div>
+      <span>${emojis[l] || ''} ${l}</span>
+      <span class="donut-legend-pct">${vals[i]} (${total > 0 ? Math.round(vals[i]/total*100) : 0}%)</span>
+    </div>`).join('');
+}
+
+// ── GRÁFICAS EXTRA (nuevos + S1) ───────────────────
+function renderGraficasExtra(reps) {
+  // Agrupar por semana
+  const semanas = {};
+  reps.forEach(r => {
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+    const key   = getSemanaKey(fecha);
+    const label = getSemanaLabel(fecha);
+    if (!semanas[key]) semanas[key] = { label, nuevos: 0, iglesia: 0 };
+    semanas[key].nuevos  += parseInt(r['Visitantes Nuevos'] || 0) || 0;
+    semanas[key].iglesia += parseInt(r['Asistieron Iglesia']|| 0) || 0;
+  });
+
+  const arr    = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
+  const labels = arr.map(([,v]) => v.label);
+
+  // Nuevos
+  const ctxN = document.getElementById('chart-nuevos').getContext('2d');
+  if (chartNuev) chartNuev.destroy();
+  chartNuev = new Chart(ctxN, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Nuevos', data: arr.map(([,v]) => v.nuevos),
+        backgroundColor: 'rgba(34,197,94,0.6)', borderColor: '#22c55e',
+        borderWidth: 1.5, borderRadius: 4 }]
+    },
+    options: barOptions()
+  });
+
+  // S1
+  const ctxI = document.getElementById('chart-iglesia').getContext('2d');
+  if (chartIgl) chartIgl.destroy();
+  chartIgl = new Chart(ctxI, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Fueron a S1', data: arr.map(([,v]) => v.iglesia),
+        backgroundColor: 'rgba(245,158,11,0.6)', borderColor: '#f59e0b',
+        borderWidth: 1.5, borderRadius: 4 }]
+    },
+    options: barOptions()
+  });
+}
+
+function barOptions() {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(46,31,82,0.6)' }, ticks: { color: '#9a96b8', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(46,31,82,0.6)' }, ticks: { color: '#9a96b8', font: { size: 11 } }, beginAtZero: true }
+    }
+  };
+}
+
+// ── MAPA ───────────────────────────────────────────
+function renderMapa(celulas) {
+  if (!mapa) {
+    mapa = L.map('mapa', { zoomControl: true }).setView([6.2442, -75.5812], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© CartoDB', maxZoom: 19
+    }).addTo(mapa);
+  } else {
+    mapa.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.CircleMarker) mapa.removeLayer(l); });
+  }
+
+  const colores = {
+    'Familias': '#e8421a', 'Hombres': '#6b52e0', 'Mujeres': '#ec4899',
+    'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4'
+  };
+
+  celulas.forEach(c => {
+    const color = colores[c.red] || '#9c87ea';
+    const marker = L.circleMarker([c.lat, c.lng], {
+      radius: 9, fillColor: color, color: '#fff',
+      weight: 2, opacity: 0.9, fillOpacity: 0.85
+    }).addTo(mapa);
+
+    marker.bindPopup(`
+      <div style="font-family:'Plus Jakarta Sans',sans-serif; min-width:200px; color:#1a0a2e">
+        <strong style="font-size:0.95rem">${c.nombre}</strong>
+        ${c.nombreCelula ? `<br><span style="color:#666;font-size:0.82rem">${c.nombreCelula}</span>` : ''}
+        <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
+        <span style="font-size:0.8rem">
+          🏷️ ${c.red || '—'} · ${c.tipo || '—'}<br>
+          📍 ${c.barrio || c.comuna || '—'}<br>
+          📅 ${c.dias || '—'} · ${c.hora || '—'}<br>
+          👤 L12: ${c.lider12 || '—'}
+        </span>
+      </div>
+    `, { maxWidth: 250 });
+  });
+
+  document.getElementById('map-count').textContent = `${celulas.length} células`;
+}
+
+// ── TABLA ──────────────────────────────────────────
+let reportesFiltrados = [];
+
+function poblarFiltroL12(reps) {
+  const l12s = [...new Set(reps.map(r => r['Líder de 12']).filter(Boolean))].sort();
+  const sel  = document.getElementById('f-l12');
+  l12s.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l; sel.appendChild(opt);
+  });
+}
+
+function filtrarTabla() {
+  const buscar  = document.getElementById('f-buscar').value.toLowerCase();
+  const l12     = document.getElementById('f-l12').value;
+  const red     = document.getElementById('f-red').value;
+  const realizo = document.getElementById('f-realizo').value;
+  const semanas = parseInt(document.getElementById('f-semanas').value) || 0;
+
+  const corte = semanas > 0
+    ? new Date(Date.now() - semanas * 7 * 24 * 60 * 60 * 1000)
+    : null;
+
+  // Necesito cruzar con inscripciones para saber la red del líder
+  const redPorLider = {};
+  celulas.forEach(c => { redPorLider[c.nombre] = c.red; });
+
+  reportesFiltrados = reportes.filter(r => {
+    const lider = (r['Nombre Líder'] || '').toLowerCase();
+    if (buscar && !lider.includes(buscar)) return false;
+    if (l12 && r['Líder de 12'] !== l12) return false;
+    if (red) {
+      const redLider = redPorLider[r['Nombre Líder']] || '';
+      if (!redLider.includes(red)) return false;
+    }
+    if (realizo === 'si') {
+      const rv = (r['Se Realizó'] || '').toLowerCase();
+      if (!rv.includes('sí') && !rv.includes('si')) return false;
+    }
+    if (realizo === 'no') {
+      const rv = (r['Se Realizó'] || '').toLowerCase();
+      if (rv.includes('sí') || rv.includes('si')) return false;
+    }
+    if (corte) {
+      const fecha = new Date(r['Fecha Célula']);
+      if (isNaN(fecha) || fecha < corte) return false;
+    }
+    return true;
+  });
+
+  // Ordenar por fecha descendente
+  reportesFiltrados.sort((a, b) =>
+    new Date(b['Fecha Célula']) - new Date(a['Fecha Célula'])
+  );
+
+  const tbody = document.getElementById('tabla-body');
+  tbody.innerHTML = '';
+
+  if (reportesFiltrados.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">
+      <div class="empty-icon">📭</div>No hay reportes con estos filtros
+    </td></tr>`;
+  } else {
+    const redPorLider2 = {};
+    celulas.forEach(c => { redPorLider2[c.nombre] = c.red; });
+
+    reportesFiltrados.forEach(r => {
+      const realizado = (r['Se Realizó'] || '').toLowerCase();
+      const siRealizo = realizado.includes('sí') || realizado.includes('si');
+      const redLider  = redPorLider2[r['Nombre Líder']] || '';
+      const badgeRed  = redLider ? `<span class="badge badge-${redLider.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${redLider}</span>` : '—';
+
+      tbody.innerHTML += `<tr>
+        <td><strong>${r['Nombre Líder'] || '—'}</strong></td>
+        <td style="color:var(--muted);font-size:0.78rem">${r['Líder de 12'] || '—'}</td>
+        <td style="white-space:nowrap">${formatFecha(r['Fecha Célula'])}</td>
+        <td><span class="badge ${siRealizo ? 'badge-si' : 'badge-no'}">${siRealizo ? '✅ Sí' : '❌ No'}</span></td>
+        <td>${badgeRed}</td>
+        <td style="color:var(--muted)">${r['Modalidad'] || '—'}</td>
+        <td style="text-align:center;font-weight:700">${siRealizo ? (r['Total Asistentes'] || 0) : '—'}</td>
+        <td style="text-align:center;color:#4ade80">${siRealizo ? (r['Visitantes Nuevos'] || 0) : '—'}</td>
+        <td style="text-align:center;color:#fbbf24">${siRealizo ? (r['Asistieron Iglesia'] || 0) : '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r['Tema'] || '—'}</td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('table-count').textContent =
+    `Mostrando ${reportesFiltrados.length} de ${reportes.length} reportes`;
+}
+
+function renderTabla(reps) {
+  reportes = reps;
+  filtrarTabla();
+}
+
+// ── HELPERS ────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function formatFecha(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d)) return str;
+  return d.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function getSemanaKey(fecha) {
+  const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2,'0');
+}
+
+function getSemanaLabel(fecha) {
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const d = new Date(fecha);
+  const dayNum = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - dayNum);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `Sem ${weekNo} ${meses[d.getMonth()]}`;
+}
+
+function showLoading(show) {
+  document.getElementById('loading').style.display = show ? 'flex' : 'none';
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── AUTO-LOGIN si hay sesión ───────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem(PASS_KEY);
+  if (saved) {
+    document.getElementById('pass-input').value = saved;
+    doLogin();
+  }
+});
+</script>
+</body>
+</html>
