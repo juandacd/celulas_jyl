@@ -350,6 +350,8 @@ body::before {
 
 .table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 420px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
@@ -1269,7 +1271,7 @@ function filtrarCelulas() {
         <td style="color:var(--muted)">${c.comuna || '—'}</td>
         <td style="color:var(--muted)">${c.barrio || '—'}</td>
         <td style="color:var(--muted);font-size:0.78rem">${c.direccion || '—'}</td>
-        <td style="color:var(--muted)">${c['Co-líder'] || '—'}</td>
+        <td style="color:var(--muted)">${c['Co-lider'] || '—'}</td>
       </tr>`;
     });
   }
