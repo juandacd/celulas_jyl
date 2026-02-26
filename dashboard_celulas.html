@@ -717,6 +717,66 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       <div class="table-count" id="table-count"></div>
     </div>
 
+    <!-- TABLA DE CÉLULAS INSCRITAS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-icon">🏘️</div>
+          <div class="card-title">Células Inscritas</div>
+        </div>
+        <span style="font-size:0.78rem; color:var(--muted)" id="celulas-count"></span>
+      </div>
+
+      <div class="table-filters">
+        <input class="filter-input" type="text" id="fc-buscar"
+              placeholder="🔍 Buscar líder o célula..."
+              oninput="filtrarCelulas()">
+        <select class="filter-select" id="fc-l12" onchange="filtrarCelulas()">
+          <option value="">Todos los L12</option>
+        </select>
+        <select class="filter-select" id="fc-red" onchange="filtrarCelulas()">
+          <option value="">Todas las redes</option>
+          <option>Familias</option>
+          <option>Hombres</option>
+          <option>Mujeres</option>
+          <option>Jóvenes</option>
+          <option>Teens</option>
+          <option>Kids</option>
+          <option>Rocas</option>
+        </select>
+        <select class="filter-select" id="fc-modalidad" onchange="filtrarCelulas()">
+          <option value="">Todas las modalidades</option>
+          <option>Presencial</option>
+          <option>Virtual</option>
+          <option>Híbrida</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tabla-celulas">
+          <thead>
+            <tr>
+              <th>Líder</th>
+              <th>WhatsApp</th>
+              <th>Nombre Célula</th>
+              <th>L12</th>
+              <th>Red</th>
+              <th>Tipo</th>
+              <th>Modalidad</th>
+              <th>Día(s)</th>
+              <th>Hora</th>
+              <th>Comuna</th>
+              <th>Barrio</th>
+              <th>Dirección</th>
+              <th>Anfitrión/Timoteo</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-celulas-body"></tbody>
+        </table>
+      </div>
+      <div class="table-count" id="celulas-table-count"></div>
+    </div>
+
   </main>
 </div>
 
@@ -788,8 +848,10 @@ async function iniciarDashboard(dash, pass) {
   }
 
   if (celJson.success) {
-    celulas = celJson.data;
-    renderMapa(celulas);
+      celulas = celJson.data;
+      renderMapa(celulas);
+      poblarFiltroL12Celulas(celulas);   // ← agrega esta
+      filtrarCelulas();                   // ← y esta
   }
 
   document.getElementById('last-update').textContent =
@@ -1156,6 +1218,67 @@ window.addEventListener('DOMContentLoaded', () => {
     doLogin();
   }
 });
+
+// ── TABLA CÉLULAS INSCRITAS ────────────────────────
+function poblarFiltroL12Celulas(cels) {
+  const l12s = [...new Set(cels.map(c => c.lider12).filter(Boolean))].sort();
+  const sel  = document.getElementById('fc-l12');
+  sel.innerHTML = '<option value="">Todos los L12</option>';
+  l12s.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l; sel.appendChild(opt);
+  });
+}
+
+function filtrarCelulas() {
+  const buscar   = document.getElementById('fc-buscar').value.toLowerCase();
+  const l12      = document.getElementById('fc-l12').value;
+  const red      = document.getElementById('fc-red').value;
+  const modalidad = document.getElementById('fc-modalidad').value;
+
+  const filtradas = celulas.filter(c => {
+    const nombre = (c.nombre || '').toLowerCase();
+    const nomCel = (c.nombreCelula || '').toLowerCase();
+    if (buscar && !nombre.includes(buscar) && !nomCel.includes(buscar)) return false;
+    if (l12 && c.lider12 !== l12) return false;
+    if (red && c.red !== red) return false;
+    if (modalidad && !(c.modalidad || '').includes(modalidad)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('tabla-celulas-body');
+  tbody.innerHTML = '';
+
+  if (filtradas.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty">
+      <div class="empty-icon">📭</div>No hay células con estos filtros
+    </td></tr>`;
+  } else {
+    filtradas.forEach(c => {
+      const redKey = (c.red || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      tbody.innerHTML += `<tr>
+        <td><strong>${c.nombre || '—'}</strong></td>
+        <td style="color:var(--muted)">${c.whatsapp || '—'}</td>
+        <td style="color:var(--muted)">${c.nombreCelula || '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem">${c.lider12 || '—'}</td>
+        <td><span class="badge badge-${redKey}">${c.red || '—'}</span></td>
+        <td style="color:var(--muted)">${c.tipo || '—'}</td>
+        <td style="color:var(--muted)">${c.modalidad || '—'}</td>
+        <td style="color:var(--muted)">${Array.isArray(c.dias) ? c.dias.join(', ') : (c.dias || '—')}</td>
+        <td style="color:var(--muted)">${c.hora || '—'}</td>
+        <td style="color:var(--muted)">${c.comuna || '—'}</td>
+        <td style="color:var(--muted)">${c.barrio || '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem">${c.direccion || '—'}</td>
+        <td style="color:var(--muted)">${c.coLider || '—'}</td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('celulas-count').textContent = `${filtradas.length} células`;
+  document.getElementById('celulas-table-count').textContent =
+    `Mostrando ${filtradas.length} de ${celulas.length} células inscritas`;
+}
+
 </script>
 </body>
 </html>
