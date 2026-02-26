@@ -641,12 +641,18 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       </div>
       <div id="mapa"></div>
       <div class="map-legend">
+        <strong style="font-size:0.75rem; color:var(--muted); margin-right:8px">TIPO (relleno):</strong>
+        <div class="legend-item"><div class="legend-dot" style="background:#6b52e0"></div>Discipulado</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e8421a"></div>Evangelística</div>
+        <span style="margin: 0 10px; color:var(--border)">|</span>
+        <strong style="font-size:0.75rem; color:var(--muted); margin-right:8px">RED (borde):</strong>
         <div class="legend-item"><div class="legend-dot" style="background:#e8421a"></div>Familias</div>
         <div class="legend-item"><div class="legend-dot" style="background:#6b52e0"></div>Hombres</div>
         <div class="legend-item"><div class="legend-dot" style="background:#ec4899"></div>Mujeres</div>
         <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Jóvenes</div>
         <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Teens</div>
         <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Kids</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Rocas</div>
       </div>
     </div>
 
@@ -860,9 +866,9 @@ function renderTendencia(tendencia) {
 function renderDonutRedes(porRed) {
   const colores = {
     'Familias': '#e8421a', 'Hombres': '#6b52e0', 'Mujeres': '#ec4899',
-    'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4'
+    'Jóvenes': '#f59e0b','Rocas': '#a855f7',  'Teens': '#22c55e',   'Kids': '#06b6d4'
   };
-  const emojis = { 'Familias':'👨‍👩‍👧','Hombres':'👨','Mujeres':'👩','Jóvenes':'🔥','Teens':'🎒','Kids':'🌟' };
+  const emojis = { 'Familias':'👨‍👩‍👧','Hombres':'👨','Mujeres':'👩','Jóvenes':'🔥','Rocas': '🪨','Teens':'🎒','Kids':'🌟' };
 
   const labels = Object.keys(porRed);
   const vals   = Object.values(porRed);
@@ -964,16 +970,25 @@ function renderMapa(celulas) {
     mapa.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.CircleMarker) mapa.removeLayer(l); });
   }
 
-  const colores = {
-    'Familias': '#e8421a', 'Hombres': '#6b52e0', 'Mujeres': '#ec4899',
-    'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4'
+  const coloresTipo = {
+    'Discipulado':   '#6b52e0',   // violeta
+    'Evangelística': '#e8421a'    // naranja-rojo
+  };
+  const coloresRed = {
+      'Familias': '#e8421a', 'Hombres': '#6b52e0', 'Mujeres': '#ec4899',
+      'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4', 'Rocas': '#a855f7'
   };
 
   celulas.forEach(c => {
-    const color = colores[c.red] || '#9c87ea';
+    const colorTipo = coloresTipo[c.tipo] || '#9c87ea';
+    const colorRed  = coloresRed[c.red]   || '#9a96b8';
     const marker = L.circleMarker([c.lat, c.lng], {
-      radius: 9, fillColor: color, color: '#fff',
-      weight: 2, opacity: 0.9, fillOpacity: 0.85
+        radius: 9,
+        fillColor: colorTipo,   // relleno = tipo
+        color: colorRed,        // borde = red
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.85
     }).addTo(mapa);
 
     marker.bindPopup(`
