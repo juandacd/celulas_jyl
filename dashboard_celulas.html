@@ -538,9 +538,18 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
   <main class="main">
 
     <!-- TÍTULO -->
-    <div class="page-title">
-      <div class="page-eyebrow">Control semanal</div>
-      <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+    <div class="page-title" style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px">
+      <div>
+        <div class="page-eyebrow">Control semanal</div>
+        <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px">
+        <span style="font-size:0.78rem; color:var(--muted)">Filtrar por L12:</span>
+        <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
+                style="min-width:200px; font-size:0.85rem; padding:10px 14px">
+          <option value="">Todos los ministerios</option>
+        </select>
+      </div>
     </div>
 
     <!-- MÉTRICAS PRINCIPALES -->
@@ -857,8 +866,9 @@ async function iniciarDashboard(dash, pass) {
   if (celJson.success) {
       celulas = celJson.data;
       renderMapa(celulas);
-      poblarFiltroL12Celulas(celulas);   // ← agrega esta
-      filtrarCelulas();                   // ← y esta
+      poblarFiltroL12Celulas(celulas);  
+      filtrarCelulas();    
+      poblarFiltroGlobalL12();                
   }
 
   document.getElementById('last-update').textContent =
@@ -1292,6 +1302,114 @@ function filtrarCelulas() {
   document.getElementById('celulas-count').textContent = `${filtradas.length} células`;
   document.getElementById('celulas-table-count').textContent =
     `Mostrando ${filtradas.length} de ${celulas.length} células inscritas`;
+}
+
+// ── FILTRO GLOBAL POR L12 ──────────────────────────
+function poblarFiltroGlobalL12() {
+  const sel = document.getElementById('filtro-l12-global');
+  const l12s = [...new Set([
+    ...celulas.map(c => c.lider12),
+    ...reportes.map(r => r['Líder de 12'])
+  ].filter(Boolean))].sort();
+
+  sel.innerHTML = '<option value="">Todos los ministerios</option>';
+  l12s.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l;
+    sel.appendChild(opt);
+  });
+}
+
+function aplicarFiltroGlobal() {
+  const l12 = document.getElementById('filtro-l12-global').value;
+
+  const celulasFiltradas  = l12 ? celulas.filter(c => c.lider12 === l12)  : celulas;
+  const reportesFiltrados = l12 ? reportes.filter(r => r['Líder de 12'] === l12) : reportes;
+
+  // Métricas
+  const totalCels    = celulasFiltradas.length;
+  const hace30       = new Date(Date.now() - 30*24*60*60*1000);
+  const inicioMes    = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const inicioSemana = new Date(); inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay()); inicioSemana.setHours(0,0,0,0);
+
+  let asistentesSemana = 0, reportesSemana = 0;
+  let nuevosMes = 0, iglesiaMes = 0, reportesMes = 0;
+  const celulasActivas = new Set();
+
+  reportesFiltrados.forEach(r => {
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+
+    const total   = parseInt(r['Total Asistentes'] || 0) || 0;
+    const nuevos  = parseInt(r['Visitantes Nuevos'] || 0) || 0;
+    const iglesia = parseInt(r['Asistieron Iglesia'] || 0) || 0;
+
+    if (fecha >= inicioSemana) { asistentesSemana += total; reportesSemana++; }
+    if (fecha >= inicioMes)    { nuevosMes += nuevos; iglesiaMes += iglesia; reportesMes++; }
+    if (fecha >= hace30)       { celulasActivas.add(r['Nombre Líder']); }
+  });
+
+  // Actualizar métricas
+  setText('m-total',    totalCels);
+  setText('m-activas',  `${celulasActivas.size} activas este mes`);
+  setText('m-semana',   asistentesSemana.toLocaleString('es-CO'));
+  setText('m-semana-rep', `${reportesSemana} reportes`);
+  setText('m-nuevos',   nuevosMes.toLocaleString('es-CO'));
+  setText('m-iglesia',  iglesiaMes.toLocaleString('es-CO'));
+  setText('m-reportes', reportesMes);
+  const cobertura = totalCels > 0 ? Math.round((celulasActivas.size / totalCels) * 100) : 0;
+  setText('m-cobertura', `${cobertura}% de cobertura`);
+
+  // Donut por red
+  const porRed = {};
+  celulasFiltradas.forEach(c => {
+    const red = c.red || 'Sin red';
+    porRed[red] = (porRed[red] || 0) + 1;
+  });
+  renderDonutRedes(porRed);
+
+  // Tendencia y gráficas extra
+  renderTendenciaFiltrada(reportesFiltrados);
+  renderGraficasExtra(reportesFiltrados);
+
+  // Mapa
+  renderMapa(celulasFiltradas);
+
+  // Tablas
+  reportes = reportesFiltrados;
+  filtrarTabla();
+  reportes = l12 ? reportes : dashData ? reportes : reportes; // mantener ref global
+  
+  // Tabla células
+  celulas = celulasFiltradas;
+  filtrarCelulas();
+
+  // Sync filtros de tabla
+  if (l12) {
+    document.getElementById('f-l12').value  = l12;
+    document.getElementById('fc-l12').value = l12;
+  } else {
+    document.getElementById('f-l12').value  = '';
+    document.getElementById('fc-l12').value = '';
+  }
+}
+
+function renderTendenciaFiltrada(reps) {
+  const semanas = {};
+  reps.forEach(r => {
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+    const key   = getSemanaKey(fecha);
+    const label = getSemanaLabel(fecha);
+    if (!semanas[key]) semanas[key] = { label, asistentes: 0 };
+    semanas[key].asistentes += parseInt(r['Total Asistentes'] || 0) || 0;
+  });
+  const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
+  renderTendencia(arr.map(([,v]) => v));
 }
 
 </script>
