@@ -655,6 +655,11 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Teens</div>
         <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Kids</div>
         <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Rocas</div>
+        <span style="margin: 0 10px; color:var(--border)">|</span>
+        <strong style="font-size:0.75rem; color:var(--muted); margin-right:8px">MODALIDAD (borde):</strong>
+        <div class="legend-item">⬤ Presencial (sólido)</div>
+        <div class="legend-item">⬤ Virtual (punteado)</div>
+        <div class="legend-item">⬤ Híbrida (guiones, más grande)</div>
       </div>
     </div>
 
@@ -1043,16 +1048,24 @@ function renderMapa(celulas) {
       'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4', 'Rocas': '#a855f7'
   };
 
+  const estiloModalidad = {
+    'Presencial': { radius: 9,  weight: 3, dashArray: null   },
+    'Virtual':    { radius: 9,  weight: 3, dashArray: '4,4'  },
+    'Híbrida':    { radius: 11, weight: 3, dashArray: '2,2'  }
+  };
+
   celulas.forEach(c => {
     const colorTipo = coloresTipo[c.tipo] || '#9c87ea';
     const colorRed  = coloresRed[c.red]   || '#9a96b8';
+    const estilo = estiloModalidad[c.modalidad] || { radius: 9, weight: 3, dashArray: null };
     const marker = L.circleMarker([c.lat, c.lng], {
-        radius: 9,
-        fillColor: colorTipo,   // relleno = tipo
-        color: colorRed,        // borde = red
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.85
+      radius:      estilo.radius,
+      fillColor:   colorTipo,
+      color:       colorRed,
+      weight:      estilo.weight,
+      dashArray:   estilo.dashArray,
+      opacity:     1,
+      fillOpacity: 0.85
     }).addTo(mapa);
 
     marker.bindPopup(`
