@@ -538,9 +538,18 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
   <main class="main">
 
     <!-- TÍTULO -->
-    <div class="page-title">
-      <div class="page-eyebrow">Control semanal</div>
-      <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+    <div class="page-title" style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:16px">
+      <div>
+        <div class="page-eyebrow">Control semanal</div>
+        <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px">
+        <span style="font-size:0.78rem; color:var(--muted)">Filtrar por L12:</span>
+        <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
+                style="min-width:200px; font-size:0.85rem; padding:10px 14px">
+          <option value="">Todos los ministerios</option>
+        </select>
+      </div>
     </div>
 
     <!-- MÉTRICAS PRINCIPALES -->
@@ -655,6 +664,11 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Teens</div>
         <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Kids</div>
         <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Rocas</div>
+        <span style="margin: 0 10px; color:var(--border)">|</span>
+        <strong style="font-size:0.75rem; color:var(--muted); margin-right:8px">MODALIDAD (borde):</strong>
+        <div class="legend-item">⬤ Presencial (sólido)</div>
+        <div class="legend-item">⬤ Virtual (punteado)</div>
+        <div class="legend-item">⬤ Híbrida (guiones, más grande)</div>
       </div>
     </div>
 
@@ -796,6 +810,8 @@ const PASS_KEY = "dash_pass";
 let dashData   = null;
 let reportes   = [];
 let celulas    = [];
+let reportesOrig   = [];   
+let celulasOrig    = [];   
 let mapa       = null;
 let chartTend  = null;
 let chartRedes = null;
@@ -844,6 +860,7 @@ async function iniciarDashboard(dash, pass) {
 
   if (repJson.success) {
     reportes = repJson.data;
+    reportesOrig = repJson.data;  
     renderTabla(reportes);
     poblarFiltroL12(reportes);
     renderGraficasExtra(reportes);
@@ -851,9 +868,11 @@ async function iniciarDashboard(dash, pass) {
 
   if (celJson.success) {
       celulas = celJson.data;
+      celulasOrig = celJson.data;   
       renderMapa(celulas);
-      poblarFiltroL12Celulas(celulas);   // ← agrega esta
-      filtrarCelulas();                   // ← y esta
+      poblarFiltroL12Celulas(celulas);  
+      filtrarCelulas();    
+      poblarFiltroGlobalL12();                
   }
 
   document.getElementById('last-update').textContent =
@@ -1043,16 +1062,24 @@ function renderMapa(celulas) {
       'Jóvenes': '#f59e0b',  'Teens': '#22c55e',   'Kids': '#06b6d4', 'Rocas': '#a855f7'
   };
 
+  const estiloModalidad = {
+    'Presencial': { radius: 9,  weight: 3, dashArray: null   },
+    'Virtual':    { radius: 9,  weight: 3, dashArray: '4,4'  },
+    'Híbrida':    { radius: 11, weight: 3, dashArray: '2,2'  }
+  };
+
   celulas.forEach(c => {
     const colorTipo = coloresTipo[c.tipo] || '#9c87ea';
     const colorRed  = coloresRed[c.red]   || '#9a96b8';
+    const estilo = estiloModalidad[c.modalidad] || { radius: 9, weight: 3, dashArray: null };
     const marker = L.circleMarker([c.lat, c.lng], {
-        radius: 9,
-        fillColor: colorTipo,   // relleno = tipo
-        color: colorRed,        // borde = red
-        weight: 3,
-        opacity: 1,
-        fillOpacity: 0.85
+      radius:      estilo.radius,
+      fillColor:   colorTipo,
+      color:       colorRed,
+      weight:      estilo.weight,
+      dashArray:   estilo.dashArray,
+      opacity:     1,
+      fillOpacity: 0.85
     }).addTo(mapa);
 
     marker.bindPopup(`
@@ -1281,6 +1308,70 @@ function filtrarCelulas() {
     `Mostrando ${filtradas.length} de ${celulas.length} células inscritas`;
 }
 
+// ── FILTRO GLOBAL POR L12 ──────────────────────────
+function aplicarFiltroGlobal() {
+  const l12 = document.getElementById('filtro-l12-global').value;
+
+  const celulasFiltradas  = l12 ? celulasOrig.filter(c => c.lider12 === l12)          : celulasOrig;
+  const reportesFiltrados = l12 ? reportesOrig.filter(r => r['Líder de 12'] === l12)  : reportesOrig;
+
+  const totalCels    = celulasFiltradas.length;
+  const hace30       = new Date(Date.now() - 30*24*60*60*1000);
+  const inicioMes    = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const inicioSemana = new Date();
+  inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
+  inicioSemana.setHours(0,0,0,0);
+
+  let asistentesSemana = 0, reportesSemana = 0;
+  let nuevosMes = 0, iglesiaMes = 0, reportesMes = 0;
+  const celulasActivas = new Set();
+
+  reportesFiltrados.forEach(r => {
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+
+    const total   = parseInt(r['Total Asistentes'] || 0) || 0;
+    const nuevos  = parseInt(r['Visitantes Nuevos'] || 0) || 0;
+    const iglesia = parseInt(r['Asistieron Iglesia'] || 0) || 0;
+
+    if (fecha >= inicioSemana) { asistentesSemana += total; reportesSemana++; }
+    if (fecha >= inicioMes)    { nuevosMes += nuevos; iglesiaMes += iglesia; reportesMes++; }
+    if (fecha >= hace30)       { celulasActivas.add(r['Nombre Líder']); }
+  });
+
+  setText('m-total',      totalCels);
+  setText('m-activas',    `${celulasActivas.size} activas este mes`);
+  setText('m-semana',     asistentesSemana.toLocaleString('es-CO'));
+  setText('m-semana-rep', `${reportesSemana} reportes`);
+  setText('m-nuevos',     nuevosMes.toLocaleString('es-CO'));
+  setText('m-iglesia',    iglesiaMes.toLocaleString('es-CO'));
+  setText('m-reportes',   reportesMes);
+  const cobertura = totalCels > 0 ? Math.round((celulasActivas.size / totalCels) * 100) : 0;
+  setText('m-cobertura',  `${cobertura}% de cobertura`);
+
+  const porRed = {};
+  celulasFiltradas.forEach(c => {
+    const red = c.red || 'Sin red';
+    porRed[red] = (porRed[red] || 0) + 1;
+  });
+  renderDonutRedes(porRed);
+  renderTendenciaFiltrada(reportesFiltrados);
+  renderGraficasExtra(reportesFiltrados);
+  renderMapa(celulasFiltradas);
+
+  // Actualizar variables globales para que filtrarTabla y filtrarCelulas funcionen
+  reportes = reportesFiltrados;
+  celulas  = celulasFiltradas;
+
+  filtrarTabla();
+  filtrarCelulas();
+
+  document.getElementById('f-l12').value  = l12;
+  document.getElementById('fc-l12').value = l12;
+}
+
 </script>
 </body>
-</html>
+</html> 
