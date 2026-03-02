@@ -860,7 +860,7 @@ async function iniciarDashboard(dash, pass) {
 
   if (repJson.success) {
     reportes = repJson.data;
-    reportesOrig = repJson.data;  
+    reportesOrig = repJson.data;
     renderTabla(reportes);
     poblarFiltroL12(reportes);
     renderGraficasExtra(reportes);
@@ -868,7 +868,7 @@ async function iniciarDashboard(dash, pass) {
 
   if (celJson.success) {
       celulas = celJson.data;
-      celulasOrig = celJson.data;   
+      celulasOrig = celJson.data; 
       renderMapa(celulas);
       poblarFiltroL12Celulas(celulas);  
       filtrarCelulas();    
@@ -1309,6 +1309,21 @@ function filtrarCelulas() {
 }
 
 // ── FILTRO GLOBAL POR L12 ──────────────────────────
+function poblarFiltroGlobalL12() {
+  const sel = document.getElementById('filtro-l12-global');
+  const l12s = [...new Set([
+    ...celulas.map(c => c.lider12),
+    ...reportes.map(r => r['Líder de 12'])
+  ].filter(Boolean))].sort();
+
+  sel.innerHTML = '<option value="">Todos los ministerios</option>';
+  l12s.forEach(l => {
+    const opt = document.createElement('option');
+    opt.value = l; opt.textContent = l;
+    sel.appendChild(opt);
+  });
+}
+
 function aplicarFiltroGlobal() {
   const l12 = document.getElementById('filtro-l12-global').value;
 
@@ -1374,4 +1389,4 @@ function aplicarFiltroGlobal() {
 
 </script>
 </body>
-</html> 
+</html>
