@@ -548,6 +548,11 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
                 style="min-width:200px; font-size:0.85rem; padding:10px 14px">
           <option value="">Todos los ministerios</option>
+          <option value="semana-actual">Esta semana</option>
+          <option value="semana-anterior" selected>Semana anterior</option>
+          <option value="mes-actual">Este mes</option>
+          <option value="mes-anterior">Mes anterior</option>
+          <option value="todo">Todo el tiempo</option>
         </select>
       </div>
     </div>
@@ -563,25 +568,25 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       <div class="metric-card" style="--accent: var(--brown)">
         <div class="metric-icon">👥</div>
         <div class="metric-value" id="m-semana">—</div>
-        <div class="metric-label">Asistentes esta semana</div>
+        <div class="metric-label" id="m-semana-label">Asistentes esta semana</div>
         <div class="metric-sub" id="m-semana-rep">— reportes</div>
       </div>
       <div class="metric-card" style="--accent: #22c55e">
         <div class="metric-icon">🌍</div>
         <div class="metric-value" id="m-nuevos">—</div>
-        <div class="metric-label">Nuevos este mes</div>
+        <div class="metric-label" id="m-nuevos-label">Nuevos este mes</div>
         <div class="metric-sub">Visitantes por primera vez</div>
       </div>
       <div class="metric-card" style="--accent: #f59e0b">
         <div class="metric-icon">⛪</div>
         <div class="metric-value" id="m-iglesia">—</div>
-        <div class="metric-label">Fueron a S1</div>
+        <div class="metric-label" id="m-iglesia-label">Fueron a S1</div>
         <div class="metric-sub">Miembros este mes</div>
       </div>
       <div class="metric-card" style="--accent: #ec4899">
         <div class="metric-icon">📋</div>
         <div class="metric-value" id="m-reportes">—</div>
-        <div class="metric-label">Reportes este mes</div>
+        <div class="metric-label" id="m-rep-label">Reportes este mes</div>
         <div class="metric-sub" id="m-cobertura">—% de cobertura</div>
       </div>
     </div>
@@ -872,7 +877,8 @@ async function iniciarDashboard(dash, pass) {
       renderMapa(celulas);
       poblarFiltroL12Celulas(celulas);  
       filtrarCelulas();    
-      poblarFiltroGlobalL12();                
+      poblarFiltroGlobalL12(); 
+      aplicarFiltroGlobal();               
   }
 
   document.getElementById('last-update').textContent =
@@ -1326,20 +1332,22 @@ function poblarFiltroGlobalL12() {
 
 function aplicarFiltroGlobal() {
   const l12 = document.getElementById('filtro-l12-global').value;
+  const { desde, hasta } = getRangoPeriodo();
 
-  const celulasFiltradas  = l12 ? celulasOrig.filter(c => c.lider12 === l12)          : celulasOrig;
-  const reportesFiltrados = l12 ? reportesOrig.filter(r => r['Líder de 12'] === l12)  : reportesOrig;
+  const celulasFiltradas  = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
+  const reportesFiltrados = reportesOrig.filter(r => {
+    if (l12 && r['Líder de 12'] !== l12) return false;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return false;
+    return fecha >= desde && fecha <= hasta;
+  });
 
-  const totalCels    = celulasFiltradas.length;
-  const hace30       = new Date(Date.now() - 30*24*60*60*1000);
-  const inicioMes    = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const inicioSemana = new Date();
-  inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
-  inicioSemana.setHours(0,0,0,0);
-
-  let asistentesSemana = 0, reportesSemana = 0;
-  let nuevosMes = 0, iglesiaMes = 0, reportesMes = 0;
+  const totalCels      = celulasFiltradas.length;
+  const hace30         = new Date(Date.now() - 30*24*60*60*1000);
   const celulasActivas = new Set();
+
+  let asistentesPeriodo = 0, reportesPeriodo = 0;
+  let nuevosPeriodo = 0, iglesiaPeriodo = 0;
 
   reportesFiltrados.forEach(r => {
     const realizo = (r['Se Realizó'] || '').toLowerCase();
@@ -1347,36 +1355,67 @@ function aplicarFiltroGlobal() {
     const fecha = new Date(r['Fecha Célula']);
     if (isNaN(fecha)) return;
 
-    const total   = parseInt(r['Total Asistentes'] || 0) || 0;
-    const nuevos  = parseInt(r['Visitantes Nuevos'] || 0) || 0;
+    const total   = parseInt(r['Total Asistentes']  || 0) || 0;
+    const nuevos  = parseInt(r['Visitantes Nuevos']  || 0) || 0;
     const iglesia = parseInt(r['Asistieron Iglesia'] || 0) || 0;
 
-    if (fecha >= inicioSemana) { asistentesSemana += total; reportesSemana++; }
-    if (fecha >= inicioMes)    { nuevosMes += nuevos; iglesiaMes += iglesia; reportesMes++; }
-    if (fecha >= hace30)       { celulasActivas.add(r['Nombre Líder']); }
+    asistentesPeriodo += total;
+    nuevosPeriodo     += nuevos;
+    iglesiaPeriodo    += iglesia;
+    reportesPeriodo++;
+
+    if (fecha >= hace30) celulasActivas.add(r['Nombre Líder']);
   });
 
+  // También contar activas en todo el rango para cobertura
+  reportesOrig.forEach(r => {
+    const fecha = new Date(r['Fecha Célula']);
+    if (!isNaN(fecha) && fecha >= hace30) {
+      const realizo = (r['Se Realizó'] || '').toLowerCase();
+      if (realizo.includes('sí') || realizo.includes('si')) {
+        if (!l12 || r['Líder de 12'] === l12) celulasActivas.add(r['Nombre Líder']);
+      }
+    }
+  });
+
+  // Etiqueta dinámica según período
+  const periodo = document.getElementById('filtro-periodo').value;
+  const labelPeriodo = {
+    'semana-actual':   'esta semana',
+    'semana-anterior': 'semana anterior',
+    'mes-actual':      'este mes',
+    'mes-anterior':    'mes anterior',
+    'todo':            'histórico'
+  }[periodo];
+
   setText('m-total',      totalCels);
-  setText('m-activas',    `${celulasActivas.size} activas este mes`);
-  setText('m-semana',     asistentesSemana.toLocaleString('es-CO'));
-  setText('m-semana-rep', `${reportesSemana} reportes`);
-  setText('m-nuevos',     nuevosMes.toLocaleString('es-CO'));
-  setText('m-iglesia',    iglesiaMes.toLocaleString('es-CO'));
-  setText('m-reportes',   reportesMes);
+  setText('m-activas',    `${celulasActivas.size} activas (últ. 30 días)`);
+  setText('m-semana',     asistentesPeriodo.toLocaleString('es-CO'));
+  setText('m-semana-rep', `${reportesPeriodo} reportes`);
+  setText('m-nuevos',     nuevosPeriodo.toLocaleString('es-CO'));
+  setText('m-iglesia',    iglesiaPeriodo.toLocaleString('es-CO'));
+  setText('m-reportes',   reportesPeriodo);
+
   const cobertura = totalCels > 0 ? Math.round((celulasActivas.size / totalCels) * 100) : 0;
   setText('m-cobertura',  `${cobertura}% de cobertura`);
+
+  // Actualizar labels de métricas según período
+  setText('m-semana-label',  `Asistentes ${labelPeriodo}`);
+  setText('m-nuevos-label',  `Nuevos ${labelPeriodo}`);
+  setText('m-iglesia-label', `Fueron a S1 ${labelPeriodo}`);
+  setText('m-rep-label',     `Reportes ${labelPeriodo}`);
 
   const porRed = {};
   celulasFiltradas.forEach(c => {
     const red = c.red || 'Sin red';
     porRed[red] = (porRed[red] || 0) + 1;
   });
+
   renderDonutRedes(porRed);
   renderTendenciaFiltrada(reportesFiltrados);
   renderGraficasExtra(reportesFiltrados);
   renderMapa(celulasFiltradas);
 
-  // Actualizar variables globales para que filtrarTabla y filtrarCelulas funcionen
   reportes = reportesFiltrados;
   celulas  = celulasFiltradas;
 
@@ -1385,6 +1424,42 @@ function aplicarFiltroGlobal() {
 
   document.getElementById('f-l12').value  = l12;
   document.getElementById('fc-l12').value = l12;
+}
+
+function getRangoPeriodo() {
+  const periodo = document.getElementById('filtro-periodo').value;
+  const hoy = new Date();
+  let desde, hasta;
+
+  if (periodo === 'semana-actual') {
+    desde = new Date(hoy);
+    desde.setDate(hoy.getDate() - hoy.getDay());
+    desde.setHours(0,0,0,0);
+    hasta = new Date();
+
+  } else if (periodo === 'semana-anterior') {
+    const diasAtras = hoy.getDay() + 7;
+    desde = new Date(hoy);
+    desde.setDate(hoy.getDate() - diasAtras);
+    desde.setHours(0,0,0,0);
+    hasta = new Date(desde);
+    hasta.setDate(desde.getDate() + 6);
+    hasta.setHours(23,59,59,999);
+
+  } else if (periodo === 'mes-actual') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    hasta = new Date();
+
+  } else if (periodo === 'mes-anterior') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0, 23, 59, 59);
+
+  } else {
+    desde = new Date('2000-01-01');
+    hasta = new Date();
+  }
+
+  return { desde, hasta };
 }
 
 </script>
