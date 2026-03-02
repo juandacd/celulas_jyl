@@ -543,16 +543,20 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <div class="page-eyebrow">Control semanal</div>
         <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
       </div>
-      <div style="display:flex; align-items:center; gap:10px">
-        <span style="font-size:0.78rem; color:var(--muted)">Filtrar por L12:</span>
-        <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
-                style="min-width:200px; font-size:0.85rem; padding:10px 14px">
-          <option value="">Todos los ministerios</option>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+        <span style="font-size:0.78rem; color:var(--muted)">Período:</span>
+        <select class="filter-select" id="filtro-periodo" onchange="aplicarFiltroGlobal()"
+                style="min-width:160px; font-size:0.85rem; padding:10px 14px">
           <option value="semana-actual">Esta semana</option>
           <option value="semana-anterior" selected>Semana anterior</option>
           <option value="mes-actual">Este mes</option>
           <option value="mes-anterior">Mes anterior</option>
           <option value="todo">Todo el tiempo</option>
+        </select>
+        <span style="font-size:0.78rem; color:var(--muted)">L12:</span>
+        <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
+                style="min-width:200px; font-size:0.85rem; padding:10px 14px">
+          <option value="">Todos los ministerios</option>
         </select>
       </div>
     </div>
