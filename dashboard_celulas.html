@@ -1461,6 +1461,22 @@ function getRangoPeriodo() {
   return { desde, hasta };
 }
 
+function renderTendenciaFiltrada(reps) {
+  const semanas = {};
+  reps.forEach(r => {
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+    const key   = getSemanaKey(fecha);
+    const label = getSemanaLabel(fecha);
+    if (!semanas[key]) semanas[key] = { label, asistentes: 0 };
+    semanas[key].asistentes += parseInt(r['Total Asistentes'] || 0) || 0;
+  });
+  const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
+  renderTendencia(arr.map(([,v]) => v));
+}
+
 </script>
 </body>
 </html>
