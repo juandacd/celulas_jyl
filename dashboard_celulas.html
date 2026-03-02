@@ -1413,10 +1413,14 @@ function aplicarFiltroGlobal() {
   renderDonutRedes(porRed);
   renderTendenciaFiltrada(reportesFiltrados);
   renderGraficasExtra(reportesFiltrados);
-  renderMapa(celulasFiltradas);
+  // El mapa y células inscritas siempre muestran todo, solo filtrado por L12 si aplica
+  const celulasParaMapa = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
+  renderMapa(celulasParaMapa);
 
+  // La tabla de reportes sí respeta el período
   reportes = reportesFiltrados;
-  celulas  = celulasFiltradas;
+  // La tabla de células inscritas siempre muestra todas
+  celulas  = celulasParaMapa;
 
   filtrarTabla();
   filtrarCelulas();
@@ -1475,7 +1479,7 @@ function renderTendenciaFiltrada(reps) {
   });
   const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
   renderTendencia(arr.map(([,v]) => v));
-}
+} 
 
 </script>
 </body>
