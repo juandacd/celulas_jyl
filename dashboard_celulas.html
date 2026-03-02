@@ -853,36 +853,31 @@ function doLogin() {
 // ── CARGAR TODO ────────────────────────────────────
 async function iniciarDashboard(dash, pass) {
   dashData = dash;
-  renderMetricas(dash);
-  renderTendencia(dash.tendencia);
-  renderDonutRedes(dash.porRed);
 
-  // Cargar reportes y células en paralelo
   const [repJson, celJson] = await Promise.all([
     fetch(`${BACKEND}?action=getReportes&pass=${encodeURIComponent(pass)}`).then(r => r.json()),
     fetch(`${BACKEND}?action=getInscripciones&pass=${encodeURIComponent(pass)}`).then(r => r.json())
   ]);
 
   if (repJson.success) {
-    reportes = repJson.data;
+    reportes     = repJson.data;
     reportesOrig = repJson.data;
-    renderTabla(reportes);
     poblarFiltroL12(reportes);
-    renderGraficasExtra(reportes);
   }
 
   if (celJson.success) {
-      celulas = celJson.data;
-      celulasOrig = celJson.data; 
-      renderMapa(celulas);
-      poblarFiltroL12Celulas(celulas);  
-      filtrarCelulas();    
-      poblarFiltroGlobalL12(); 
-      aplicarFiltroGlobal();               
+    celulas     = celJson.data;
+    celulasOrig = celJson.data;
+    poblarFiltroL12Celulas(celulas);
+    poblarFiltroGlobalL12();
   }
 
   document.getElementById('last-update').textContent =
     'Actualizado: ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+
+  // Arrancar con semana anterior y que ese filtro renderice todo
+  document.getElementById('filtro-periodo').value = 'semana-anterior';
+  aplicarFiltroGlobal();
 
   showLoading(false);
 }
