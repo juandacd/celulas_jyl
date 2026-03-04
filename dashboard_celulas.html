@@ -1516,6 +1516,11 @@ function aplicarFiltroGlobal() {
 
   document.getElementById('f-l12').value  = l12;
   document.getElementById('fc-l12').value = l12;
+
+  const redMap = {};
+  celulasOrig.forEach(c => { redMap[c.nombre] = c.red; });
+  reportesFiltrados.forEach(r => { r._red = redMap[r['Nombre Líder']] || ''; });
+  renderPeticiones(reportesFiltrados);
 }
 
 function getRangoPeriodo() {
