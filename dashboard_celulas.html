@@ -494,6 +494,84 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .main { padding: 20px 16px 60px; }
 }
+
+/* ── CARDS DE PETICIONES ─────────────────────────── */
+.peticiones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.peticion-card {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.peticion-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.peticion-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--gold);
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+.peticion-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.peticion-lider {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.peticion-fecha {
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.peticion-texto {
+  font-size: 0.83rem;
+  color: var(--brown-light);
+  line-height: 1.55;
+  font-family: 'Lora', serif;
+  font-style: italic;
+}
+.peticion-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.peticion-count {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: right;
+}
+.peticiones-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.peticiones-empty-icon { font-size: 2rem; margin-bottom: 8px; }
+
 </style>
 </head>
 <body>
@@ -740,6 +818,17 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         </table>
       </div>
       <div class="table-count" id="table-count"></div>
+      <!-- PETICIONES Y NOTAS -->
+      <div class="card" id="card-peticiones">
+        <div class="card-header">
+          <div class="card-title-row">
+            <div class="card-icon">🙏</div>
+            <div class="card-title">Peticiones y Notas</div>
+          </div>
+          <span style="font-size:0.78rem; color:var(--muted)" id="peticiones-count"></span>
+        </div>
+        <div class="peticiones-grid" id="peticiones-grid"></div>
+      </div>
     </div>
 
     <!-- TABLA DE CÉLULAS INSCRITAS -->
@@ -1480,6 +1569,68 @@ function renderTendenciaFiltrada(reps) {
   const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
   renderTendencia(arr.map(([,v]) => v));
 } 
+
+// ── PETICIONES Y NOTAS ─────────────────────────────
+function renderPeticiones(reps) {
+  const grid = document.getElementById('peticiones-grid');
+  const countEl = document.getElementById('peticiones-count');
+
+  // Solo las que tienen texto en Peticiones y Notas, y sí se realizaron
+  const conPeticion = reps.filter(r => {
+    const texto = (r['Peticiones y Notas'] || '').trim();
+    if (!texto) return false;
+    const realizo = (r['Se Realizó'] || '').toLowerCase();
+    return realizo.includes('sí') || realizo.includes('si');
+  });
+
+  // Ordenar por fecha descendente
+  conPeticion.sort((a, b) =>
+    new Date(b['Fecha Célula']) - new Date(a['Fecha Célula'])
+  );
+
+  countEl.textContent = conPeticion.length
+    ? `${conPeticion.length} con peticiones`
+    : '';
+
+  if (conPeticion.length === 0) {
+    grid.innerHTML = `
+      <div class="peticiones-empty">
+        <div class="peticiones-empty-icon">🕊️</div>
+        No hay peticiones registradas en este período
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = conPeticion.map(r => {
+    const redKey = (r._red || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const redBadge = r._red
+      ? `<span class="badge badge-${redKey}">${r._red}</span>`
+      : '';
+    return `
+      <div class="peticion-card">
+        <div class="peticion-card-header">
+          <div>
+            <div class="peticion-lider">${r['Nombre Líder'] || '—'}</div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
+              L12: ${r['Líder de 12'] || '—'}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="peticion-fecha">${formatFecha(r['Fecha Célula'])}</div>
+            <div style="margin-top:4px">${redBadge}</div>
+          </div>
+        </div>
+        <div class="peticion-texto">"${(r['Peticiones y Notas'] || '').trim()}"</div>
+        <div class="peticion-meta">
+          <span style="font-size:0.72rem;color:var(--muted)">
+            👥 ${r['Total Asistentes'] || 0} asistentes
+          </span>
+          ${r['Tema'] ? `<span style="font-size:0.72rem;color:var(--muted)">· 📖 ${r['Tema']}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
 
 </script>
 </body>
