@@ -623,19 +623,60 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
         <span style="font-size:0.78rem; color:var(--muted)">Período:</span>
-        <select class="filter-select" id="filtro-periodo" onchange="aplicarFiltroGlobal()"
+        <select class="filter-select" id="filtro-periodo" onchange="toggleFechasCustom(); aplicarFiltroGlobal()"
                 style="min-width:160px; font-size:0.85rem; padding:10px 14px">
           <option value="semana-actual">Esta semana</option>
           <option value="semana-anterior" selected>Semana anterior</option>
           <option value="mes-actual">Este mes</option>
           <option value="mes-anterior">Mes anterior</option>
+          <option value="custom">Rango personalizado</option>
           <option value="todo">Todo el tiempo</option>
         </select>
+        <div id="wrap-fechas-custom" style="display:none; align-items:center; gap:8px">
+          <input type="date" id="fecha-desde" class="filter-select" onchange="aplicarFiltroGlobal()"
+                style="font-size:0.82rem; padding:8px 10px">
+          <span style="color:var(--muted); font-size:0.78rem">→</span>
+          <input type="date" id="fecha-hasta" class="filter-select" onchange="aplicarFiltroGlobal()"
+                style="font-size:0.82rem; padding:8px 10px">
+        </div>
         <span style="font-size:0.78rem; color:var(--muted)">L12:</span>
         <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
                 style="min-width:200px; font-size:0.85rem; padding:10px 14px">
           <option value="">Todos los ministerios</option>
         </select>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS PROMEDIO -->
+    <div style="margin-bottom:8px; margin-top:-12px">
+      <span style="font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--brown-light)">
+        📊 Promedio semanal histórico
+      </span>
+    </div>
+    <div class="metrics-grid" id="metrics-grid-avg" style="margin-bottom:32px">
+      <div class="metric-card" style="--accent:#9c87ea; opacity:0.85">
+        <div class="metric-icon">📐</div>
+        <div class="metric-value" id="m-avg-asistentes">—</div>
+        <div class="metric-label">Prom. asistentes</div>
+        <div class="metric-sub" id="m-avg-semanas">— semanas</div>
+      </div>
+      <div class="metric-card" style="--accent:#9c87ea; opacity:0.85">
+        <div class="metric-icon">🌍</div>
+        <div class="metric-value" id="m-avg-nuevos">—</div>
+        <div class="metric-label">Prom. nuevos</div>
+        <div class="metric-sub">Por semana</div>
+      </div>
+      <div class="metric-card" style="--accent:#9c87ea; opacity:0.85">
+        <div class="metric-icon">⛪</div>
+        <div class="metric-value" id="m-avg-iglesia">—</div>
+        <div class="metric-label">Prom. fueron a S1</div>
+        <div class="metric-sub">Por semana</div>
+      </div>
+      <div class="metric-card" style="--accent:#9c87ea; opacity:0.85">
+        <div class="metric-icon">📋</div>
+        <div class="metric-value" id="m-avg-reportes">—</div>
+        <div class="metric-label">Prom. reportes</div>
+        <div class="metric-sub">Por semana</div>
       </div>
     </div>
 
@@ -1440,12 +1481,19 @@ function aplicarFiltroGlobal() {
   const { desde, hasta } = getRangoPeriodo();
 
   const celulasFiltradas  = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
+  // Mapa de red por líder para excluir Teens de métricas
+  const redPorLiderMetricas = {};
+  celulasOrig.forEach(c => { redPorLiderMetricas[c.nombre] = c.red; });
+
   const reportesFiltrados = reportesOrig.filter(r => {
-    if (l12 && r['Líder de 12'] !== l12) return false;
-    const fecha = new Date(r['Fecha Célula']);
-    if (isNaN(fecha)) return false;
-    return fecha >= desde && fecha <= hasta;
-  });
+      if (l12 && r['Líder de 12'] !== l12) return false;
+      const fecha = new Date(r['Fecha Célula']);
+      if (isNaN(fecha)) return false;
+      // Excluir Teens de métricas principales
+      const redLider = redPorLiderMetricas[r['Nombre Líder']] || '';
+      if (redLider === 'Teens') return false;
+      return fecha >= desde && fecha <= hasta;
+    });
 
   const totalCels      = celulasFiltradas.length;
   const hace30         = new Date(Date.now() - 30*24*60*60*1000);
@@ -1485,13 +1533,16 @@ function aplicarFiltroGlobal() {
 
   // Etiqueta dinámica según período
   const periodo = document.getElementById('filtro-periodo').value;
+  const desdeLabel = document.getElementById('fecha-desde').value;
+  const hastaLabel = document.getElementById('fecha-hasta').value;
   const labelPeriodo = {
-    'semana-actual':   'esta semana',
-    'semana-anterior': 'semana anterior',
-    'mes-actual':      'este mes',
-    'mes-anterior':    'mes anterior',
-    'todo':            'histórico'
-  }[periodo];
+      'semana-actual':   'esta semana',
+      'semana-anterior': 'semana anterior',
+      'mes-actual':      'este mes',
+      'mes-anterior':    'mes anterior',
+      'todo':            'histórico',
+      'custom': (desdeLabel && hastaLabel) ? `${desdeLabel} → ${hastaLabel}` : 'rango personalizado'
+    }[periodo] || 'período seleccionado';
 
   setText('m-total',      totalCels);
   setText('m-activas',    `${celulasActivas.size} activas (últ. 30 días)`);
@@ -1517,8 +1568,12 @@ function aplicarFiltroGlobal() {
   });
 
   renderDonutRedes(porRed);
-  renderTendenciaFiltrada(reportesFiltrados);
-  renderGraficasExtra(reportesFiltrados);
+  // Gráficas siempre con histórico completo, solo filtrado por L12
+  const reportesParaGraficas = l12
+    ? reportesOrig.filter(r => r['Líder de 12'] === l12)
+    : reportesOrig;
+  renderTendenciaFiltrada(reportesParaGraficas);
+  renderGraficasExtra(reportesParaGraficas);
   // El mapa y células inscritas siempre muestran todo, solo filtrado por L12 si aplica
   const celulasParaMapa = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
   renderMapa(celulasParaMapa);
@@ -1528,6 +1583,7 @@ function aplicarFiltroGlobal() {
   // La tabla de células inscritas siempre muestra todas
   celulas  = celulasParaMapa;
 
+  renderPromedios(reportesOrig);
   filtrarTabla();
   filtrarCelulas();
 
@@ -1540,6 +1596,13 @@ function aplicarFiltroGlobal() {
   renderPeticiones(reportesFiltrados);
 }
 
+function toggleFechasCustom() {
+  const periodo = document.getElementById('filtro-periodo').value;
+  const wrap    = document.getElementById('wrap-fechas-custom');
+  wrap.style.display = periodo === 'custom' ? 'flex' : 'none';
+}
+
+// Actualiza getRangoPeriodo para soportar custom
 function getRangoPeriodo() {
   const periodo = document.getElementById('filtro-periodo').value;
   const hoy = new Date();
@@ -1567,6 +1630,12 @@ function getRangoPeriodo() {
   } else if (periodo === 'mes-anterior') {
     desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
     hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0, 23, 59, 59);
+
+  } else if (periodo === 'custom') {
+    const d = document.getElementById('fecha-desde').value;
+    const h = document.getElementById('fecha-hasta').value;
+    desde = d ? new Date(d + 'T00:00:00') : new Date('2000-01-01');
+    hasta = h ? new Date(h + 'T23:59:59') : new Date();
 
   } else {
     desde = new Date('2000-01-01');
@@ -1652,6 +1721,43 @@ function renderPeticiones(reps) {
         </div>
       </div>`;
   }).join('');
+}
+
+function renderPromedios(reps) {
+  // Usa siempre reportesOrig para el promedio histórico completo
+  const datos = reps || reportesOrig;
+  const semanas = {};
+
+  const redPorLiderProm = {};
+  celulasOrig.forEach(c => { redPorLiderProm[c.nombre] = c.red; });
+
+  datos.forEach(r => {
+      if ((redPorLiderProm[r['Nombre Líder']] || '') === 'Teens') return;
+      const realizo = (r['Se Realizó'] || '').toLowerCase();
+    if (!realizo.includes('sí') && !realizo.includes('si')) return;
+    const fecha = new Date(r['Fecha Célula']);
+    if (isNaN(fecha)) return;
+    const key = getSemanaKey(fecha);
+    if (!semanas[key]) semanas[key] = { asistentes:0, nuevos:0, iglesia:0, reportes:0 };
+    semanas[key].asistentes += parseInt(r['Total Asistentes']  || 0) || 0;
+    semanas[key].nuevos     += parseInt(r['Visitantes Nuevos']  || 0) || 0;
+    semanas[key].iglesia    += parseInt(r['Asistieron Iglesia'] || 0) || 0;
+    semanas[key].reportes++;
+  });
+
+  const arr = Object.values(semanas);
+  const n   = arr.length || 1;
+
+  const avgAsistentes = Math.round(arr.reduce((s,v) => s + v.asistentes, 0) / n);
+  const avgNuevos     = Math.round(arr.reduce((s,v) => s + v.nuevos,     0) / n);
+  const avgIglesia    = Math.round(arr.reduce((s,v) => s + v.iglesia,    0) / n);
+  const avgReportes   = Math.round(arr.reduce((s,v) => s + v.reportes,   0) / n);
+
+  setText('m-avg-asistentes', avgAsistentes.toLocaleString('es-CO'));
+  setText('m-avg-nuevos',     avgNuevos.toLocaleString('es-CO'));
+  setText('m-avg-iglesia',    avgIglesia.toLocaleString('es-CO'));
+  setText('m-avg-reportes',   avgReportes.toLocaleString('es-CO'));
+  setText('m-avg-semanas',    `Sobre ${n} semanas`);
 }
 
 </script>
