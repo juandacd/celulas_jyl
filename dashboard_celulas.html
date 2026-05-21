@@ -718,6 +718,33 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
 .lb-row.is-top .lb-name { font-weight: 700; }
 .lb-val { font-weight: 700; color: var(--gold); white-space: nowrap; }
 .lb-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 10px 0; }
+.lb-info {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: 0.8rem; padding: 0 2px; line-height: 1;
+  opacity: 0.55; transition: opacity 0.2s;
+}
+.lb-info:hover { opacity: 1; }
+.lb-desc {
+  font-size: 0.74rem; color: var(--muted); line-height: 1.45;
+  margin: -2px 0 12px; padding: 8px 10px;
+  background: var(--gold-pale); border-radius: 6px;
+}
+
+/* ── BOTÓN DE INFO (ℹ️) GENÉRICO ─────────────────── */
+.info-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 0.8rem; padding: 0 2px; line-height: 1;
+  opacity: 0.5; transition: opacity 0.2s;
+}
+.info-btn:hover { opacity: 1; }
+.metric-info { position: absolute; top: 12px; right: 12px; }
+.card-desc {
+  font-size: 0.78rem; color: var(--muted); line-height: 1.5;
+  margin: 0 0 16px; padding: 10px 14px;
+  background: var(--gold-pale); border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.metric-card .card-desc { margin: 12px 0 0; font-size: 0.74rem; }
 
 /* ── ALERTAS DE REPORTE ──────────────────────────── */
 .alert-banner {
@@ -1245,6 +1272,8 @@ async function iniciarDashboard(dash, pass) {
     // Arrancar con semana anterior y que ese filtro renderice todo
     document.getElementById('filtro-periodo').value = 'semana-anterior';
     aplicarFiltroGlobal();
+    // Botones de información (ℹ️) en todas las tarjetas — no debe romper el render
+    try { inyectarInfoMetricas(); inyectarInfoCards(); } catch (e) { console.warn('Info tooltips:', e); }
   } catch (e) {
     console.error('Error al cargar el dashboard:', e);
     toast('No se pudieron cargar los datos (¿backend caído o URL incorrecta?): ' + (e && e.message ? e.message : e));
@@ -2200,6 +2229,76 @@ function renderPeticiones(reps) {
   }).join('');
 }
 
+// Muestra/oculta la explicación (ℹ️) de una tarjeta de Destacados
+function toggleLbDesc(btn) {
+  const desc = btn.closest('.lb-title').nextElementSibling;
+  if (desc && desc.classList.contains('lb-desc')) {
+    desc.style.display = desc.style.display === 'block' ? 'none' : 'block';
+  }
+}
+
+// ── INFO (ℹ️) EN TARJETAS: explicaciones para cualquier líder ──
+const METRIC_INFO = {
+  'm-avg-asistentes': 'Promedio de asistentes por semana en el histórico (suma de asistentes de cada semana ÷ número de semanas). Excluye Teens.',
+  'm-avg-nuevos':     'Promedio de visitantes nuevos por semana en el histórico. Excluye Teens.',
+  'm-avg-iglesia':    'Promedio de personas que fueron a S1 por semana en el histórico. Excluye Teens.',
+  'm-avg-reportes':   'Promedio de reportes recibidos por semana en el histórico.',
+  'm-total':          'Número total de células inscritas (en el ministerio seleccionado).',
+  'm-semana':         'Total de asistentes sumados en el período seleccionado. Excluye Teens.',
+  'm-nuevos':         'Total de visitantes nuevos en el período seleccionado. Excluye Teens.',
+  'm-iglesia':        'Total de miembros que fueron a S1 en el período seleccionado. Excluye Teens.',
+  'm-reportes':       'Número de reportes recibidos en el período seleccionado.'
+};
+
+const CARD_INFO = {
+  'Tendencia semanal':            'Total de asistentes sumados por semana (histórico). Cada punto es una semana.',
+  'Células por Red':              'Cuántas células hay en cada red (Familias, Jóvenes, Mujeres, etc.).',
+  'Visitantes nuevos por semana': 'Total de visitantes nuevos que llegaron cada semana.',
+  'Asistencia a S1 por semana':   'Total de personas que fueron al servicio del fin de semana (S1) cada semana.',
+  'Mapa de Células — Medellín':   'Ubicación de cada célula. Relleno = tipo, borde = red, estilo del borde = modalidad. Pasa el mouse para ver info y haz click para el detalle completo.',
+  'Alertas de reporte':           'Quiénes no han llenado el reporte y de qué semanas (últimas 4 semanas).',
+  'Reportes semanales':           'Lista detallada de cada reporte recibido en el período seleccionado.',
+  'Peticiones y Notas':           'Peticiones de oración y novedades que escribieron los líderes.',
+  'Células Inscritas':            'Listado de todas las células registradas con sus datos.'
+};
+
+// Muestra/oculta la explicación más cercana (.card-desc)
+function toggleCardDesc(btn) {
+  let desc = btn.nextElementSibling;
+  while (desc && !(desc.classList && desc.classList.contains('card-desc'))) desc = desc.nextElementSibling;
+  if (!desc) {
+    const card = btn.closest('.card, .metric-card');
+    desc = card && card.querySelector('.card-desc');
+  }
+  if (desc) desc.style.display = desc.style.display === 'block' ? 'none' : 'block';
+}
+
+function inyectarInfoMetricas() {
+  Object.keys(METRIC_INFO).forEach(id => {
+    const val = document.getElementById(id);
+    if (!val) return;
+    const card = val.closest('.metric-card');
+    if (!card || card.querySelector('.info-btn')) return;
+    const desc = METRIC_INFO[id];
+    card.insertAdjacentHTML('beforeend',
+      `<button class="info-btn metric-info" title="${esc(desc)}" onclick="toggleCardDesc(this)" aria-label="Información">ℹ️</button>` +
+      `<div class="card-desc" style="display:none">${esc(desc)}</div>`);
+  });
+}
+
+function inyectarInfoCards() {
+  document.querySelectorAll('.card .card-title').forEach(titleEl => {
+    const desc = CARD_INFO[titleEl.textContent.trim()];
+    if (!desc) return;
+    const row = titleEl.closest('.card-title-row');
+    if (!row || row.querySelector('.info-btn')) return;
+    row.insertAdjacentHTML('beforeend',
+      `<button class="info-btn" title="${esc(desc)}" onclick="toggleCardDesc(this)" aria-label="Información">ℹ️</button>`);
+    const header = titleEl.closest('.card-header');
+    if (header) header.insertAdjacentHTML('afterend', `<div class="card-desc" style="display:none">${esc(desc)}</div>`);
+  });
+}
+
 // ── DESTACADOS (rankings por célula y por ministerio) ──
 function renderDestacados(reps) {
   const esSi = r => {
@@ -2207,14 +2306,16 @@ function renderDestacados(reps) {
     return v.includes('sí') || v.includes('si');
   };
   const n = (r, k) => parseInt(r[k] || 0) || 0;
-  const realizadas = reps.filter(esSi);
 
-  // Agrupa los reportes realizados por un campo (célula = Nombre Líder, ministerio = Líder de 12)
+  // Agrupa por un campo. Cuenta TODOS los reportes (para % de cumplimiento)
+  // pero solo suma asistencia/nuevos/S1 de las reuniones realizadas.
   const agrupar = (keyFn) => {
     const m = {};
-    realizadas.forEach(r => {
+    reps.forEach(r => {
       const k = (keyFn(r) || '').toString().trim() || '—';
-      if (!m[k]) m[k] = { nombre: k, asis: 0, nuevos: 0, s1: 0, veces: 0 };
+      if (!m[k]) m[k] = { nombre: k, asis: 0, nuevos: 0, s1: 0, veces: 0, reportes: 0 };
+      m[k].reportes += 1;
+      if (!esSi(r)) return;
       m[k].asis   += n(r, 'Total Asistentes');
       m[k].nuevos += n(r, 'Visitantes Nuevos');
       m[k].s1     += n(r, 'Asistieron Iglesia');
@@ -2222,8 +2323,10 @@ function renderDestacados(reps) {
     });
     return Object.values(m).map(o => ({
       ...o,
-      promAsis:   o.veces ? Math.round(o.asis / o.veces) : 0,
-      promNuevos: o.veces ? Math.round((o.nuevos / o.veces) * 10) / 10 : 0
+      promAsis:     o.veces ? Math.round(o.asis / o.veces) : 0,
+      promNuevos:   o.veces ? Math.round((o.nuevos / o.veces) * 10) / 10 : 0,
+      promS1:       o.veces ? Math.round((o.s1 / o.veces) * 10) / 10 : 0,
+      cumplimiento: o.reportes ? Math.round((o.veces / o.reportes) * 100) : 0
     }));
   };
 
@@ -2237,8 +2340,8 @@ function renderDestacados(reps) {
 
   const medalla = i => ['🥇', '🥈', '🥉'][i] || (i + 1) + '.';
 
-  // Construye un mini-leaderboard (top 5) ordenado por valKey
-  const lb = (titulo, ico, arr, valKey, sufijo) => {
+  // Construye un mini-leaderboard (top 5) ordenado por valKey, con info (ℹ️)
+  const lb = (titulo, ico, arr, valKey, sufijo, desc) => {
     const top = arr.filter(o => (o[valKey] || 0) > 0)
       .sort((a, b) => b[valKey] - a[valKey])
       .slice(0, 5);
@@ -2251,22 +2354,40 @@ function renderDestacados(reps) {
         </div>`).join('')
       : `<div class="lb-empty">Sin datos en este período</div>`;
     return `<div class="lb-card">
-      <div class="lb-title"><span class="lb-ico">${ico}</span> ${titulo}</div>
+      <div class="lb-title">
+        <span class="lb-ico">${ico}</span> ${titulo}
+        <button class="lb-info" onclick="toggleLbDesc(this)" title="${esc(desc)}" aria-label="Información">ℹ️</button>
+      </div>
+      <div class="lb-desc" style="display:none">${esc(desc)}</div>
       <div class="lb-list">${filas}</div>
     </div>`;
   };
 
   document.getElementById('dest-celulas').innerHTML =
-    lb('Más asistentes (prom.)', '📈', cel, 'promAsis', '') +
-    lb('Más visitantes nuevos',  '🌍', cel, 'nuevos',   '') +
-    lb('Más constantes',         '🔥', cel, 'veces',    ' reun.') +
-    lb('Más llevan a S1',        '⛪', cel, 's1',       '');
+    lb('Más asistentes (prom.)', '📈', cel, 'promAsis', '',
+       'Promedio de personas que asisten a la célula por reunión (asistentes totales ÷ reuniones realizadas).') +
+    lb('Más nuevos (prom.)', '🌱', cel, 'promNuevos', '',
+       'Promedio de visitantes nuevos por reunión. Muestra qué célula gana más gente nueva, sin importar cuántas veces se reúna.') +
+    lb('Más nuevos (total)', '🌍', cel, 'nuevos', '',
+       'Total de visitantes nuevos acumulados en todas las reuniones del período.') +
+    lb('Más llevan a S1 (prom.)', '⛪', cel, 'promS1', '',
+       'Promedio de miembros que asistieron al servicio del fin de semana (S1) por reunión.') +
+    lb('Más constantes', '🔥', cel, 'veces', ' reun.',
+       'Número de reuniones realizadas: cuántas veces se ha reunido la célula en el período.');
 
   document.getElementById('dest-ministerios').innerHTML =
-    lb('Más constantes',               '🔥', min, 'veces',      ' reun.') +
-    lb('Más asistentes (prom.)',       '📈', min, 'promAsis',   '') +
-    lb('Más ganadores (prom. nuevos)', '🌍', min, 'promNuevos', '') +
-    lb('Más llevan a S1',              '⛪', min, 's1',         '');
+    lb('Más asistentes (prom.)', '📈', min, 'promAsis', '',
+       'Promedio de asistentes por reunión, entre todas las células del ministerio.') +
+    lb('Más nuevos (prom.)', '🌱', min, 'promNuevos', '',
+       'Promedio de visitantes nuevos por reunión, entre las células del ministerio. Mide efectividad evangelística sin importar el tamaño.') +
+    lb('Más nuevos (total)', '🌍', min, 'nuevos', '',
+       'Total de visitantes nuevos acumulados por todas las células del ministerio.') +
+    lb('Más llevan a S1 (prom.)', '⛪', min, 'promS1', '',
+       'Promedio de personas que fueron a S1 por reunión, entre las células del ministerio.') +
+    lb('Más constantes', '🔥', min, 'veces', ' reun.',
+       'Total de reuniones realizadas por todas las células del ministerio (favorece a ministerios con más células).') +
+    lb('Mejor cumplimiento', '✅', min.filter(o => o.reportes >= 3), 'cumplimiento', '%',
+       'Porcentaje de reuniones que sí se realizaron sobre el total de reportes enviados. Mide constancia sin importar el tamaño (mínimo 3 reportes).');
 }
 
 // ── ALERTAS DE REPORTE (pendientes por semana) ─────
