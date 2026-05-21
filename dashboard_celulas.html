@@ -719,6 +719,41 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
 .lb-val { font-weight: 700; color: var(--gold); white-space: nowrap; }
 .lb-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 10px 0; }
 
+/* ── ALERTAS DE REPORTE ──────────────────────────── */
+.alert-banner {
+  border-radius: var(--radius-sm);
+  padding: 14px 16px; margin-bottom: 18px;
+  font-size: 0.9rem; font-weight: 600;
+  border: 1px solid; line-height: 1.5;
+}
+.alert-banner.ok   { background: rgba(34,197,94,0.12);  border-color: rgba(34,197,94,0.4);  color: #4ade80; }
+.alert-banner.warn { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.45); color: #fbbf24; }
+.alertas-resumen { font-size: 0.83rem; color: var(--muted); margin-bottom: 18px; }
+.alertas-resumen strong { color: var(--ink); }
+.alert-group { margin-bottom: 18px; }
+.alert-group:last-child { margin-bottom: 0; }
+.alert-group-head {
+  font-size: 0.78rem; font-weight: 700; color: var(--brown-light);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.alert-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 9px 0; border-bottom: 1px solid rgba(46,31,82,0.5); font-size: 0.84rem;
+}
+.alert-row:last-child { border-bottom: none; }
+.alert-cell-name { flex: 1; min-width: 170px; color: var(--ink); }
+.alert-cell-name small { color: var(--muted); font-weight: 400; }
+.alert-weeks { display: flex; gap: 6px; flex-wrap: wrap; }
+.wk-badge {
+  font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 20px;
+  background: rgba(245,158,11,0.15); color: #fbbf24; white-space: nowrap;
+}
+.wk-badge.cur  { background: rgba(239,68,68,0.18); color: #f87171; }
+.wk-badge.none { background: rgba(239,68,68,0.18); color: #f87171; }
+.alertas-ok { text-align: center; padding: 24px 16px; color: #4ade80; font-size: 0.92rem; }
+.alertas-ok-icon { font-size: 1.8rem; margin-bottom: 6px; }
+
 </style>
 </head>
 <body>
@@ -862,6 +897,18 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <div class="metric-label" id="m-rep-label">Reportes este mes</div>
         <div class="metric-sub" id="m-cobertura">—% de cobertura</div>
       </div>
+    </div>
+
+    <!-- ALERTAS DE REPORTE -->
+    <div class="card" id="card-alertas">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-icon">🔔</div>
+          <div class="card-title">Alertas de reporte</div>
+        </div>
+        <span style="font-size:0.78rem; color:var(--muted)">Últimas 4 semanas</span>
+      </div>
+      <div id="alertas-content"></div>
     </div>
 
     <!-- GRÁFICA DE TENDENCIA + DONUT POR RED -->
@@ -1125,6 +1172,7 @@ const PASS_KEY = "dash_pass";
 let dashData    = null;
 let userRol     = 'admin';   // rol del usuario logueado: 'admin' | 'lider12'
 let userLider12 = '';        // ministerio (Líder de 12) del usuario, si aplica
+let userNombre  = '';        // nombre del líder logueado (para su estado personal)
 let reportes   = [];
 let celulas    = [];
 let reportesOrig   = [];   
@@ -1167,6 +1215,7 @@ async function iniciarDashboard(dash, pass) {
   dashData    = dash;
   userRol     = dash.rol || 'admin';
   userLider12 = dash.lider12 || '';
+  userNombre  = dash.nombre  || '';
 
   // Todo el flujo dentro de try/finally: si el backend falla (404, HTML en vez
   // de JSON, etc.) mostramos el error y SIEMPRE quitamos el spinner.
@@ -2019,6 +2068,8 @@ function aplicarFiltroGlobal() {
   reportesFiltrados.forEach(r => { r._red = (r['Red Célula'] || '').toString().trim() || redMap[r['Nombre Líder']] || ''; });
   renderPeticiones(reportesFiltrados);
   renderDestacados(reportesFiltrados);
+  // Alertas: usan todas las semanas en alcance (no el período), solo filtradas por L12
+  renderAlertas(celulasFiltradas, reportesParaGraficas, userNombre);
 }
 
 function toggleFechasCustom() {
@@ -2216,6 +2267,126 @@ function renderDestacados(reps) {
     lb('Más asistentes (prom.)',       '📈', min, 'promAsis',   '') +
     lb('Más ganadores (prom. nuevos)', '🌍', min, 'promNuevos', '') +
     lb('Más llevan a S1',              '⛪', min, 's1',         '');
+}
+
+// ── ALERTAS DE REPORTE (pendientes por semana) ─────
+function ultimasSemanas(n) {
+  const arr = [];
+  const hoy = new Date();
+  for (let i = 0; i < n; i++) {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() - i * 7);
+    arr.push({ key: getSemanaKey(d), label: getSemanaLabel(d) });
+  }
+  return arr.reverse(); // de más antigua a la actual
+}
+
+function renderAlertas(cels, reps, miNombre) {
+  const cont = document.getElementById('alertas-content');
+  if (!cont) return;
+
+  const N = 4;
+  const weeks    = ultimasSemanas(N);
+  const weekKeys = weeks.map(w => w.key);
+  const curKey   = weekKeys[weekKeys.length - 1];
+  const curLabel = weeks[weeks.length - 1].label;
+  const cellId   = c => c.nombre + '||' + (c.red || '');
+
+  // Células por nombre de líder (para distinguir por red cuando hay varias)
+  const porNombre = {};
+  cels.forEach(c => { (porNombre[c.nombre] = porNombre[c.nombre] || []).push(c); });
+
+  // Semanas reportadas (dentro de la ventana) y primera semana reportada (global) por célula
+  const reportadas = {};
+  const primera    = {};
+  reps.forEach(r => {
+    const nom = (r['Nombre Líder'] || '').toString().trim();
+    const cands = porNombre[nom];
+    if (!cands) return;
+    const f = new Date(r['Fecha Célula']);
+    if (isNaN(f)) return;
+    const wk  = getSemanaKey(f);
+    const red = (r['Red Célula'] || '').toString().trim();
+    let targets;
+    if (cands.length === 1) targets = cands;
+    else if (red) { targets = cands.filter(c => (c.red || '') === red); if (!targets.length) targets = cands; }
+    else targets = cands;
+    targets.forEach(c => {
+      const id = cellId(c);
+      if (weekKeys.includes(wk)) (reportadas[id] = reportadas[id] || new Set()).add(wk);
+      if (!primera[id] || wk < primera[id]) primera[id] = wk;
+    });
+  });
+
+  // Estado por célula
+  const estados = cels.map(c => {
+    const id   = cellId(c);
+    const rep  = reportadas[id] || new Set();
+    const prim = primera[id];
+    const sinReportes = !prim;
+    // Solo contamos como "faltante" las semanas desde que la célula empezó a reportar
+    const faltan = sinReportes ? [] : weeks.filter(w => !rep.has(w.key) && w.key >= prim);
+    return { c, faltan, sinReportes, alDia: rep.has(curKey) };
+  });
+
+  // ── Banner personal (la suya) ──
+  let bannerHTML = '';
+  const misCels = porNombre[miNombre] || [];
+  if (misCels.length) {
+    const pendientes = misCels.filter(c => !(reportadas[cellId(c)] || new Set()).has(curKey));
+    if (pendientes.length === 0) {
+      bannerHTML = `<div class="alert-banner ok">✅ Estás al día: ya enviaste tu reporte de esta semana (${esc(curLabel)}).</div>`;
+    } else {
+      const cuales = misCels.length > 1
+        ? ': ' + pendientes.map(c => esc(c.red || c.nombreCelula || 'tu célula')).join(', ')
+        : '';
+      bannerHTML = `<div class="alert-banner warn">⚠️ Te falta tu reporte de esta semana (${esc(curLabel)})${cuales}.</div>`;
+    }
+  }
+
+  // ── Resumen de la semana actual ──
+  const totalCels    = cels.length;
+  const alDiaActual  = estados.filter(e => e.alDia).length;
+  const resumenHTML  = totalCels
+    ? `<div class="alertas-resumen">Semana actual (${esc(curLabel)}): <strong>${alDiaActual} de ${totalCels}</strong> células ya reportaron.</div>`
+    : '';
+
+  // ── Lista de pendientes ──
+  const conPendientes = estados.filter(e => e.faltan.length > 0 || e.sinReportes);
+
+  const filaHTML = e => {
+    const c = e.c;
+    const sub = c.red
+      ? ` <small>· ${esc(c.red)}</small>`
+      : (c.nombreCelula ? ` <small>· ${esc(c.nombreCelula)}</small>` : '');
+    const badges = e.sinReportes
+      ? `<span class="wk-badge none">Sin reportes aún</span>`
+      : e.faltan.map(w => `<span class="wk-badge${w.key === curKey ? ' cur' : ''}">${esc(w.label)}</span>`).join('');
+    return `<div class="alert-row">
+      <span class="alert-cell-name">${esc(c.nombre)}${sub}</span>
+      <span class="alert-weeks">${badges}</span>
+    </div>`;
+  };
+
+  let listaHTML = '';
+  if (conPendientes.length === 0) {
+    listaHTML = `<div class="alertas-ok"><div class="alertas-ok-icon">🎉</div>Todas las células están al día con sus reportes.</div>`;
+  } else if (userRol === 'admin') {
+    const grupos = {};
+    conPendientes.forEach(e => {
+      const k = e.c.lider12 || 'Sin L12';
+      (grupos[k] = grupos[k] || []).push(e);
+    });
+    listaHTML = Object.keys(grupos).sort().map(l12 => `
+      <div class="alert-group">
+        <div class="alert-group-head">${esc(l12)} — ${grupos[l12].length} pendiente(s)</div>
+        ${grupos[l12].map(filaHTML).join('')}
+      </div>`).join('');
+  } else {
+    listaHTML = `<div class="alert-group">${conPendientes.map(filaHTML).join('')}</div>`;
+  }
+
+  cont.innerHTML = bannerHTML + resumenHTML + listaHTML;
 }
 
 function renderPromedios(reps) {
