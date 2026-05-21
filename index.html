@@ -902,18 +902,6 @@ function toggleMaterial(val) {
   document.getElementById('blk-otro-mat').classList.toggle('show', val === 'otro');
 }
 
-// ── CALCULAR ASISTENCIA ───────────────────────────
-function calcAsistencia() {
-  const total = parseInt(document.getElementById('r-total').value) || 0;
-  const reg   = parseInt(document.getElementById('r-regulares').value) || 0;
-  const hint  = document.getElementById('calc-hint');
-  if (total > 0 && reg <= total) {
-    hint.textContent = `✓ Visitantes esperados: ${total - reg}`;
-  } else {
-    hint.textContent = '';
-  }
-}
-
 // ── PROGRESS ──────────────────────────────────────
 function updateProg(form) {
   if (form === 1) {

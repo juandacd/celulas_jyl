@@ -572,6 +572,115 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
 }
 .peticiones-empty-icon { font-size: 2rem; margin-bottom: 8px; }
 
+/* ── TOOLTIP DEL MAPA ────────────────────────────── */
+.leaflet-tooltip.cell-tip {
+  white-space: normal;
+  max-width: 260px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── MODAL DETALLE DE CÉLULA ─────────────────────── */
+.detalle-bg {
+  display: none; position: fixed; inset: 0; z-index: 400;
+  background: rgba(10,5,20,0.8);
+  backdrop-filter: blur(6px);
+  overflow-y: auto; padding: 40px 16px;
+}
+.detalle-bg.show { display: block; }
+.detalle-modal {
+  background: #22103d;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 900px; margin: 0 auto;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  animation: detPop 0.28s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes detPop {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+.detalle-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--gold-pale);
+  border: 1px solid var(--border);
+  color: var(--brown-light);
+  font-size: 0.85rem; cursor: pointer;
+  transition: all 0.2s; z-index: 2;
+}
+.detalle-close:hover { background: var(--gold); color: #fff; }
+
+.det-header { margin-bottom: 24px; padding-right: 44px; }
+.det-title {
+  font-family: 'Lora', serif; font-size: 1.6rem;
+  color: var(--brown-light); margin: 4px 0 10px; line-height: 1.15;
+}
+.det-sub {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  color: var(--muted); font-size: 0.9rem;
+}
+
+.det-info-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px; padding: 18px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 24px;
+}
+.det-info-label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); font-weight: 700; margin-bottom: 3px;
+}
+.det-info-val { font-size: 0.88rem; color: var(--ink); word-break: break-word; }
+
+.det-kpis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px; margin-bottom: 12px;
+}
+.det-kpi {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 16px 12px;
+  text-align: center; position: relative; overflow: hidden;
+}
+.det-kpi::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--accent, var(--brown));
+}
+.det-kpi-icon { font-size: 1.1rem; margin-bottom: 6px; }
+.det-kpi-val {
+  font-family: 'Lora', serif; font-size: 1.6rem;
+  color: var(--ink); line-height: 1;
+}
+.det-kpi-label {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--muted); font-weight: 600; margin-top: 6px;
+}
+.det-meta-line { font-size: 0.8rem; color: var(--muted); margin-bottom: 24px; }
+.det-meta-line strong { color: var(--ink); }
+
+.det-section { margin-bottom: 24px; }
+.det-section:last-child { margin-bottom: 0; }
+.det-section-title {
+  font-family: 'Lora', serif; font-size: 1rem;
+  color: var(--brown-light); margin-bottom: 14px;
+}
+.det-peticiones { display: grid; gap: 10px; }
+.det-peticion {
+  background: var(--paper); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  border-left: 3px solid var(--gold);
+}
+.det-peticion-fecha { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+.det-peticion-texto {
+  font-family: 'Lora', serif; font-style: italic;
+  font-size: 0.85rem; color: var(--brown-light); line-height: 1.5;
+}
+@media(max-width: 640px) { .detalle-modal { padding: 22px 16px; } }
+
 </style>
 </head>
 <body>
@@ -606,8 +715,10 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         Células J&amp;L — Dashboard
       </div>
       <div class="header-right">
+        <span class="last-update" id="user-label"></span>
         <span class="last-update" id="last-update"></span>
         <button class="btn-refresh" onclick="recargar()">↻ Actualizar</button>
+        <button class="btn-refresh" onclick="logout()">Salir</button>
       </div>
     </div>
   </header>
@@ -620,6 +731,7 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       <div>
         <div class="page-eyebrow">Control semanal</div>
         <h1 class="page-h1">Panel de <em style="font-style:italic">Células</em></h1>
+        <div id="scope-label" style="display:none; margin-top:8px; font-size:0.85rem; font-weight:700; color:var(--gold)"></div>
       </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
         <span style="font-size:0.78rem; color:var(--muted)">Período:</span>
@@ -639,8 +751,8 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
           <input type="date" id="fecha-hasta" class="filter-select" onchange="aplicarFiltroGlobal()"
                 style="font-size:0.82rem; padding:8px 10px">
         </div>
-        <span style="font-size:0.78rem; color:var(--muted)">L12:</span>
-        <select class="filter-select" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
+        <span class="solo-admin" style="font-size:0.78rem; color:var(--muted)">L12:</span>
+        <select class="filter-select solo-admin" id="filtro-l12-global" onchange="aplicarFiltroGlobal()"
                 style="min-width:200px; font-size:0.85rem; padding:10px 14px">
           <option value="">Todos los ministerios</option>
         </select>
@@ -814,7 +926,7 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <input class="filter-input" type="text" id="f-buscar"
                placeholder="🔍 Buscar líder..."
                oninput="filtrarTabla()">
-        <select class="filter-select" id="f-l12" onchange="filtrarTabla()">
+        <select class="filter-select solo-admin" id="f-l12" onchange="filtrarTabla()">
           <option value="">Todos los L12</option>
         </select>
         <select class="filter-select" id="f-red" onchange="filtrarTabla()">
@@ -825,6 +937,7 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
           <option>Jóvenes</option>
           <option>Teens</option>
           <option>Kids</option>
+          <option>Rocas</option>
         </select>
         <select class="filter-select" id="f-realizo" onchange="filtrarTabla()">
           <option value="">Realizadas y no</option>
@@ -886,7 +999,7 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
         <input class="filter-input" type="text" id="fc-buscar"
               placeholder="🔍 Buscar líder o célula..."
               oninput="filtrarCelulas()">
-        <select class="filter-select" id="fc-l12" onchange="filtrarCelulas()">
+        <select class="filter-select solo-admin" id="fc-l12" onchange="filtrarCelulas()">
           <option value="">Todos los L12</option>
         </select>
         <select class="filter-select" id="fc-red" onchange="filtrarCelulas()">
@@ -938,6 +1051,14 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- ══ MODAL DETALLE DE CÉLULA ══ -->
+<div class="detalle-bg" id="detalle-bg" onclick="if(event.target===this) cerrarDetalleCelula()">
+  <div class="detalle-modal">
+    <button class="detalle-close" onclick="cerrarDetalleCelula()" aria-label="Cerrar">✕</button>
+    <div id="detalle-content"></div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════
 // CONFIG
@@ -946,7 +1067,9 @@ const BACKEND = "https://script.google.com/macros/s/AKfycbw5ZADK4IgfyUV2Aho4EoEg
 const PASS_KEY = "dash_pass";
 
 // Estado global
-let dashData   = null;
+let dashData    = null;
+let userRol     = 'admin';   // rol del usuario logueado: 'admin' | 'lider12'
+let userLider12 = '';        // ministerio (Líder de 12) del usuario, si aplica
 let reportes   = [];
 let celulas    = [];
 let reportesOrig   = [];   
@@ -986,7 +1109,9 @@ function doLogin() {
 
 // ── CARGAR TODO ────────────────────────────────────
 async function iniciarDashboard(dash, pass) {
-  dashData = dash;
+  dashData    = dash;
+  userRol     = dash.rol || 'admin';
+  userLider12 = dash.lider12 || '';
 
   const [repJson, celJson] = await Promise.all([
     fetch(`${BACKEND}?action=getReportes&pass=${encodeURIComponent(pass)}`).then(r => r.json()),
@@ -1009,11 +1134,47 @@ async function iniciarDashboard(dash, pass) {
   document.getElementById('last-update').textContent =
     'Actualizado: ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
 
+  // Aplicar permisos según el rol (oculta filtros de ministerio a no-admin)
+  aplicarPermisos();
+
   // Arrancar con semana anterior y que ese filtro renderice todo
   document.getElementById('filtro-periodo').value = 'semana-anterior';
   aplicarFiltroGlobal();
 
   showLoading(false);
+}
+
+// ── PERMISOS POR ROL ───────────────────────────────
+function aplicarPermisos() {
+  const esAdmin = userRol === 'admin';
+
+  // Controles que solo tienen sentido para admins (elegir entre ministerios)
+  document.querySelectorAll('.solo-admin').forEach(el => {
+    el.style.display = esAdmin ? '' : 'none';
+  });
+
+  // Etiqueta del ministerio que se está viendo
+  const scope = document.getElementById('scope-label');
+  if (!esAdmin && userLider12) {
+    scope.textContent = '👤 Viendo el ministerio de ' + userLider12;
+    scope.style.display = 'block';
+  } else {
+    scope.style.display = 'none';
+  }
+
+  // Etiqueta del usuario en el header
+  const ul = document.getElementById('user-label');
+  if (ul) {
+    ul.textContent = esAdmin
+      ? '🔓 Vista general'
+      : (userLider12 ? '👤 ' + userLider12 : '');
+  }
+}
+
+// ── CERRAR SESIÓN ──────────────────────────────────
+function logout() {
+  sessionStorage.removeItem(PASS_KEY);
+  location.reload();
 }
 
 async function recargar() {
@@ -1113,7 +1274,7 @@ function renderDonutRedes(porRed) {
   leg.innerHTML = labels.map((l, i) => `
     <div class="donut-legend-item">
       <div class="donut-legend-dot" style="background:${bgColors[i]}"></div>
-      <span>${emojis[l] || ''} ${l}</span>
+      <span>${emojis[l] || ''} ${esc(l)}</span>
       <span class="donut-legend-pct">${vals[i]} (${total > 0 ? Math.round(vals[i]/total*100) : 0}%)</span>
     </div>`).join('');
 }
@@ -1134,7 +1295,8 @@ function renderGraficasExtra(reps) {
     semanas[key].iglesia += parseInt(r['Asistieron Iglesia']|| 0) || 0;
   });
 
-  const arr    = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
+  // Histórico completo: todas las semanas con datos (sin recortar a las últimas N)
+  const arr    = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0]));
   const labels = arr.map(([,v]) => v.label);
 
   // Nuevos
@@ -1217,22 +1379,201 @@ function renderMapa(celulas) {
       fillOpacity: 0.85
     }).addTo(mapa);
 
-    marker.bindPopup(`
+    const diasTxt = Array.isArray(c.dias) ? c.dias.join(', ') : (c.dias || '');
+    marker.bindTooltip(`
       <div style="font-family:'Plus Jakarta Sans',sans-serif; min-width:200px; color:#1a0a2e">
-        <strong style="font-size:0.95rem">${c.nombre}</strong>
-        ${c.nombreCelula ? `<br><span style="color:#666;font-size:0.82rem">${c.nombreCelula}</span>` : ''}
+        <strong style="font-size:0.95rem">${esc(c.nombre)}</strong>
+        ${c.nombreCelula ? `<br><span style="color:#666;font-size:0.82rem">${esc(c.nombreCelula)}</span>` : ''}
         <hr style="border:none;border-top:1px solid #eee;margin:8px 0">
         <span style="font-size:0.8rem">
-          🏷️ ${c.red || '—'} · ${c.tipo || '—'}<br>
-          📍 ${c.barrio || c.comuna || '—'}<br>
-          📅 ${c.dias || '—'} · ${c.hora || '—'}<br>
-          👤 L12: ${c.lider12 || '—'}
+          🏷️ ${esc(c.red) || '—'} · ${esc(c.tipo) || '—'}<br>
+          📍 ${esc(c.barrio || c.comuna) || '—'}<br>
+          📅 ${esc(diasTxt) || '—'} · ${esc(c.hora) || '—'}<br>
+          👤 L12: ${esc(c.lider12) || '—'}
         </span>
+        <div style="margin-top:6px;font-size:0.72rem;color:#6b52e0;font-weight:600">👆 Click para ver detalle</div>
       </div>
-    `, { maxWidth: 250 });
+    `, { direction: 'top', offset: [0, -8], opacity: 1, className: 'cell-tip', maxWidth: 260 });
+    marker.on('click', () => abrirDetalleCelula(c.nombre));
   });
 
   document.getElementById('map-count').textContent = `${celulas.length} células`;
+}
+
+// ── DETALLE DE UNA CÉLULA ──────────────────────────
+let chartDetalle = null;
+
+function abrirDetalleCelula(nombreLider) {
+  const cel  = celulasOrig.find(c => c.nombre === nombreLider) || {};
+  const reps = reportesOrig.filter(r => r['Nombre Líder'] === nombreLider);
+
+  const esRealizada = r => {
+    const v = (r['Se Realizó'] || '').toLowerCase();
+    return v.includes('sí') || v.includes('si');
+  };
+  const num = (r, k) => parseInt(r[k] || 0) || 0;
+
+  const realizadas = reps.filter(esRealizada);
+  const totalRep   = reps.length;
+  const totalReal  = realizadas.length;
+  const sumAsist   = realizadas.reduce((s, r) => s + num(r, 'Total Asistentes'),  0);
+  const sumNuevos  = realizadas.reduce((s, r) => s + num(r, 'Visitantes Nuevos'), 0);
+  const sumIgl     = realizadas.reduce((s, r) => s + num(r, 'Asistieron Iglesia'),0);
+  const promAsist  = totalReal ? Math.round(sumAsist / totalReal) : 0;
+  const maxAsist   = realizadas.reduce((m, r) => Math.max(m, num(r, 'Total Asistentes')), 0);
+  const cumpl      = totalRep ? Math.round(totalReal / totalRep * 100) : 0;
+
+  const fechasReal = realizadas
+    .map(r => new Date(r['Fecha Célula']))
+    .filter(d => !isNaN(d))
+    .sort((a, b) => b - a);
+  const ultima = fechasReal.length ? formatFecha(fechasReal[0]) : '—';
+
+  // Tendencia semanal de asistencia
+  const semanas = {};
+  realizadas.forEach(r => {
+    const f = new Date(r['Fecha Célula']); if (isNaN(f)) return;
+    const k = getSemanaKey(f);
+    if (!semanas[k]) semanas[k] = { label: getSemanaLabel(f), asistentes: 0 };
+    semanas[k].asistentes += num(r, 'Total Asistentes');
+  });
+  const arrSem = Object.entries(semanas).sort((a, b) => a[0].localeCompare(b[0])).slice(-12);
+
+  // Reportes recientes y peticiones
+  const recientes = [...reps]
+    .sort((a, b) => new Date(b['Fecha Célula']) - new Date(a['Fecha Célula']))
+    .slice(0, 10);
+  const peticiones = realizadas
+    .filter(r => (r['Peticiones y Notas'] || '').trim())
+    .sort((a, b) => new Date(b['Fecha Célula']) - new Date(a['Fecha Célula']));
+
+  const red    = cel.red || '';
+  const redKey = red.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const diasTxt = Array.isArray(cel.dias) ? cel.dias.join(', ') : (cel.dias || '');
+
+  const infoRow = (label, val) => `
+    <div>
+      <div class="det-info-label">${label}</div>
+      <div class="det-info-val">${esc(val) || '—'}</div>
+    </div>`;
+  const kpi = (icon, val, label, accent) => `
+    <div class="det-kpi" style="--accent:${accent}">
+      <div class="det-kpi-icon">${icon}</div>
+      <div class="det-kpi-val">${val}</div>
+      <div class="det-kpi-label">${label}</div>
+    </div>`;
+
+  const html = `
+    <div class="det-header">
+      <div class="page-eyebrow">Detalle de célula</div>
+      <h2 class="det-title">${esc(cel.nombre || nombreLider)}</h2>
+      <div class="det-sub">
+        ${cel.nombreCelula ? `<span>${esc(cel.nombreCelula)}</span>` : ''}
+        ${red ? `<span class="badge badge-${redKey}">${esc(red)}</span>` : ''}
+        ${cel.tipo ? `<span class="badge badge-neutral">${esc(cel.tipo)}</span>` : ''}
+        ${cel.modalidad ? `<span class="badge badge-neutral">${esc(cel.modalidad)}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="det-info-grid">
+      ${infoRow('Líder', cel.nombre || nombreLider)}
+      ${infoRow('Líder de 12', cel.lider12)}
+      ${infoRow('WhatsApp', cel.whatsapp)}
+      ${infoRow('Anfitrión/Timoteo', cel['Co-lider'])}
+      ${infoRow('Día(s)', diasTxt)}
+      ${infoRow('Hora', cel.hora ? formatHora(cel.hora) : '')}
+      ${infoRow('Comuna', cel.comuna)}
+      ${infoRow('Barrio', cel.barrio)}
+      ${infoRow('Dirección', cel.direccion)}
+    </div>
+
+    <div class="det-kpis">
+      ${kpi('📋', totalReal,       'Células realizadas',  '#6b52e0')}
+      ${kpi('📐', promAsist,       'Prom. asistentes',    '#e8421a')}
+      ${kpi('👥', maxAsist,        'Máx. asistentes',     '#9c87ea')}
+      ${kpi('🌍', sumNuevos,       'Nuevos (total)',      '#22c55e')}
+      ${kpi('⛪', sumIgl,          'Fueron a S1 (total)', '#f59e0b')}
+      ${kpi('✅', cumpl + '%',     'Cumplimiento',        '#ec4899')}
+    </div>
+    <div class="det-meta-line">
+      Última célula: <strong>${ultima}</strong> · ${totalRep} reportes en total
+      (${totalReal} realizadas, ${totalRep - totalReal} no)
+    </div>
+
+    ${arrSem.length ? `
+    <div class="det-section">
+      <div class="det-section-title">📈 Asistencia por semana</div>
+      <div style="position:relative;height:220px"><canvas id="detalle-chart"></canvas></div>
+    </div>` : ''}
+
+    <div class="det-section">
+      <div class="det-section-title">📋 Reportes recientes</div>
+      ${recientes.length ? `
+      <div class="table-wrap" style="max-height:none">
+        <table>
+          <thead><tr>
+            <th>Fecha</th><th>¿Realizada?</th><th>Asist.</th><th>Nuevos</th><th>S1</th><th>Tema</th>
+          </tr></thead>
+          <tbody>
+            ${recientes.map(r => {
+              const ok = esRealizada(r);
+              return `<tr>
+                <td style="white-space:nowrap">${formatFecha(r['Fecha Célula'])}</td>
+                <td><span class="badge ${ok ? 'badge-si' : 'badge-no'}">${ok ? '✅ Sí' : '❌ No'}</span></td>
+                <td style="text-align:center;font-weight:700">${ok ? num(r, 'Total Asistentes') : '—'}</td>
+                <td style="text-align:center;color:#4ade80">${ok ? num(r, 'Visitantes Nuevos') : '—'}</td>
+                <td style="text-align:center;color:#fbbf24">${ok ? num(r, 'Asistieron Iglesia') : '—'}</td>
+                <td style="color:var(--muted);font-size:0.78rem">${ok ? (esc(r['Tema']) || '—') : '—'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>` : `<div class="empty"><div class="empty-icon">📭</div>Esta célula aún no tiene reportes</div>`}
+    </div>
+
+    ${peticiones.length ? `
+    <div class="det-section">
+      <div class="det-section-title">🙏 Peticiones y notas (${peticiones.length})</div>
+      <div class="det-peticiones">
+        ${peticiones.map(r => `
+          <div class="det-peticion">
+            <div class="det-peticion-fecha">${formatFecha(r['Fecha Célula'])}</div>
+            <div class="det-peticion-texto">"${esc((r['Peticiones y Notas'] || '').trim())}"</div>
+          </div>`).join('')}
+      </div>
+    </div>` : ''}
+  `;
+
+  document.getElementById('detalle-content').innerHTML = html;
+  document.getElementById('detalle-bg').classList.add('show');
+  document.getElementById('detalle-bg').scrollTop = 0;
+
+  // Gráfica de tendencia de esta célula
+  if (chartDetalle) { chartDetalle.destroy(); chartDetalle = null; }
+  if (arrSem.length) {
+    const ctx = document.getElementById('detalle-chart').getContext('2d');
+    chartDetalle = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: arrSem.map(([, v]) => v.label),
+        datasets: [{
+          label: 'Asistentes',
+          data: arrSem.map(([, v]) => v.asistentes),
+          borderColor: '#e8421a',
+          backgroundColor: 'rgba(232,66,26,0.08)',
+          pointBackgroundColor: '#e8421a',
+          pointRadius: 4, pointHoverRadius: 6,
+          borderWidth: 2.5, tension: 0.35, fill: true
+        }]
+      },
+      options: barOptions()
+    });
+  }
+}
+
+function cerrarDetalleCelula() {
+  document.getElementById('detalle-bg').classList.remove('show');
+  if (chartDetalle) { chartDetalle.destroy(); chartDetalle = null; }
 }
 
 // ── TABLA ──────────────────────────────────────────
@@ -1265,7 +1606,7 @@ function filtrarTabla() {
   reportesFiltrados = reportes.filter(r => {
     const lider = (r['Nombre Líder'] || '').toLowerCase();
     if (buscar && !lider.includes(buscar)) return false;
-    if (l12 && r['Líder de 12'] !== l12) return false;
+    if (l12 && r['Líder de 12'] !== l12 && r['Nombre Líder'] !== l12) return false;
     if (red) {
       const redLider = redPorLider[r['Nombre Líder']] || '';
       if (!redLider.includes(red)) return false;
@@ -1298,28 +1639,27 @@ function filtrarTabla() {
       <div class="empty-icon">📭</div>No hay reportes con estos filtros
     </td></tr>`;
   } else {
-    const redPorLider2 = {};
-    celulas.forEach(c => { redPorLider2[c.nombre] = c.red; });
-
+    let html = '';
     reportesFiltrados.forEach(r => {
       const realizado = (r['Se Realizó'] || '').toLowerCase();
       const siRealizo = realizado.includes('sí') || realizado.includes('si');
-      const redLider  = redPorLider2[r['Nombre Líder']] || '';
-      const badgeRed  = redLider ? `<span class="badge badge-${redLider.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${redLider}</span>` : '—';
+      const redLider  = redPorLider[r['Nombre Líder']] || '';
+      const badgeRed  = redLider ? `<span class="badge badge-${redLider.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${esc(redLider)}</span>` : '—';
 
-      tbody.innerHTML += `<tr>
-        <td><strong>${r['Nombre Líder'] || '—'}</strong></td>
-        <td style="color:var(--muted);font-size:0.78rem">${r['Líder de 12'] || '—'}</td>
+      html += `<tr>
+        <td><strong>${esc(r['Nombre Líder']) || '—'}</strong></td>
+        <td style="color:var(--muted);font-size:0.78rem">${esc(r['Líder de 12']) || '—'}</td>
         <td style="white-space:nowrap">${formatFecha(r['Fecha Célula'])}</td>
         <td><span class="badge ${siRealizo ? 'badge-si' : 'badge-no'}">${siRealizo ? '✅ Sí' : '❌ No'}</span></td>
         <td>${badgeRed}</td>
-        <td style="color:var(--muted)">${r['Modalidad'] || '—'}</td>
+        <td style="color:var(--muted)">${esc(r['Modalidad']) || '—'}</td>
         <td style="text-align:center;font-weight:700">${siRealizo ? (r['Total Asistentes'] || 0) : '—'}</td>
         <td style="text-align:center;color:#4ade80">${siRealizo ? (r['Visitantes Nuevos'] || 0) : '—'}</td>
         <td style="text-align:center;color:#fbbf24">${siRealizo ? (r['Asistieron Iglesia'] || 0) : '—'}</td>
-        <td style="color:var(--muted);font-size:0.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r['Tema'] || '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r['Tema']) || '—'}</td>
       </tr>`;
     });
+    tbody.innerHTML = html;
   }
 
   document.getElementById('table-count').textContent =
@@ -1335,6 +1675,18 @@ function renderTabla(reps) {
 function setText(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
+}
+
+// Escapa texto que viene de Google Sheets antes de inyectarlo con innerHTML.
+// Evita XSS almacenado: un líder podría escribir HTML/JS en un nombre, tema o petición.
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatFecha(str) {
@@ -1400,6 +1752,11 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ── CERRAR DETALLE CON ESC ─────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') cerrarDetalleCelula();
+});
+
 // ── TABLA CÉLULAS INSCRITAS ────────────────────────
 function poblarFiltroL12Celulas(cels) {
   const l12s = [...new Set(cels.map(c => c.lider12).filter(Boolean))].sort();
@@ -1421,7 +1778,7 @@ function filtrarCelulas() {
     const nombre = (c.nombre || '').toLowerCase();
     const nomCel = (c.nombreCelula || '').toLowerCase();
     if (buscar && !nombre.includes(buscar) && !nomCel.includes(buscar)) return false;
-    if (l12 && c.lider12 !== l12) return false;
+    if (l12 && c.lider12 !== l12 && c.nombre !== l12) return false;
     if (red && c.red !== red) return false;
     if (modalidad && !(c.modalidad || '').includes(modalidad)) return false;
     return true;
@@ -1435,24 +1792,27 @@ function filtrarCelulas() {
       <div class="empty-icon">📭</div>No hay células con estos filtros
     </td></tr>`;
   } else {
+    let html = '';
     filtradas.forEach(c => {
       const redKey = (c.red || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      tbody.innerHTML += `<tr>
-        <td><strong>${c.nombre || '—'}</strong></td>
-        <td style="color:var(--muted)">${c.whatsapp || '—'}</td>
-        <td style="color:var(--muted)">${c.nombreCelula || '—'}</td>
-        <td style="color:var(--muted);font-size:0.78rem">${c.lider12 || '—'}</td>
-        <td><span class="badge badge-${redKey}">${c.red || '—'}</span></td>
-        <td style="color:var(--muted)">${c.tipo || '—'}</td>
-        <td style="color:var(--muted)">${c.modalidad || '—'}</td>
-        <td style="color:var(--muted)">${Array.isArray(c.dias) ? c.dias.join(', ') : (c.dias || '—')}</td>
+      const dias = Array.isArray(c.dias) ? c.dias.join(', ') : (c.dias || '');
+      html += `<tr>
+        <td><strong>${esc(c.nombre) || '—'}</strong></td>
+        <td style="color:var(--muted)">${esc(c.whatsapp) || '—'}</td>
+        <td style="color:var(--muted)">${esc(c.nombreCelula) || '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem">${esc(c.lider12) || '—'}</td>
+        <td><span class="badge badge-${redKey}">${esc(c.red) || '—'}</span></td>
+        <td style="color:var(--muted)">${esc(c.tipo) || '—'}</td>
+        <td style="color:var(--muted)">${esc(c.modalidad) || '—'}</td>
+        <td style="color:var(--muted)">${esc(dias) || '—'}</td>
         <td style="color:var(--muted)">${formatHora(c.hora)}</td>
-        <td style="color:var(--muted)">${c.comuna || '—'}</td>
-        <td style="color:var(--muted)">${c.barrio || '—'}</td>
-        <td style="color:var(--muted);font-size:0.78rem">${c.direccion || '—'}</td>
-        <td style="color:var(--muted)">${c['Co-lider'] || '—'}</td>
+        <td style="color:var(--muted)">${esc(c.comuna) || '—'}</td>
+        <td style="color:var(--muted)">${esc(c.barrio) || '—'}</td>
+        <td style="color:var(--muted);font-size:0.78rem">${esc(c.direccion) || '—'}</td>
+        <td style="color:var(--muted)">${esc(c['Co-lider']) || '—'}</td>
       </tr>`;
     });
+    tbody.innerHTML = html;
   }
 
   document.getElementById('celulas-count').textContent = `${filtradas.length} células`;
@@ -1480,13 +1840,18 @@ function aplicarFiltroGlobal() {
   const l12 = document.getElementById('filtro-l12-global').value;
   const { desde, hasta } = getRangoPeriodo();
 
-  const celulasFiltradas  = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
+  // Al filtrar por un L12 incluimos también su propia célula (suele estar
+  // registrada bajo otro líder, p. ej. los pastores).
+  const celulaEnMinisterio  = c => !l12 || c.lider12 === l12 || c.nombre === l12;
+  const reporteEnMinisterio = r => !l12 || r['Líder de 12'] === l12 || r['Nombre Líder'] === l12;
+
+  const celulasFiltradas  = celulasOrig.filter(celulaEnMinisterio);
   // Mapa de red por líder para excluir Teens de métricas
   const redPorLiderMetricas = {};
   celulasOrig.forEach(c => { redPorLiderMetricas[c.nombre] = c.red; });
 
   const reportesFiltrados = reportesOrig.filter(r => {
-      if (l12 && r['Líder de 12'] !== l12) return false;
+      if (!reporteEnMinisterio(r)) return false;
       const fecha = new Date(r['Fecha Célula']);
       if (isNaN(fecha)) return false;
       // Excluir Teens de métricas principales
@@ -1569,13 +1934,11 @@ function aplicarFiltroGlobal() {
 
   renderDonutRedes(porRed);
   // Gráficas siempre con histórico completo, solo filtrado por L12
-  const reportesParaGraficas = l12
-    ? reportesOrig.filter(r => r['Líder de 12'] === l12)
-    : reportesOrig;
+  const reportesParaGraficas = reportesOrig.filter(reporteEnMinisterio);
   renderTendenciaFiltrada(reportesParaGraficas);
   renderGraficasExtra(reportesParaGraficas);
   // El mapa y células inscritas siempre muestran todo, solo filtrado por L12 si aplica
-  const celulasParaMapa = l12 ? celulasOrig.filter(c => c.lider12 === l12) : celulasOrig;
+  const celulasParaMapa = celulasOrig.filter(celulaEnMinisterio);
   renderMapa(celulasParaMapa);
 
   // La tabla de reportes sí respeta el período
@@ -1657,7 +2020,8 @@ function renderTendenciaFiltrada(reps) {
     if (!semanas[key]) semanas[key] = { label, asistentes: 0 };
     semanas[key].asistentes += parseInt(r['Total Asistentes'] || 0) || 0;
   });
-  const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0])).slice(-10);
+  // Histórico completo: todas las semanas con datos (sin recortar a las últimas N)
+  const arr = Object.entries(semanas).sort((a,b) => a[0].localeCompare(b[0]));
   renderTendencia(arr.map(([,v]) => v));
 } 
 
@@ -1696,15 +2060,15 @@ function renderPeticiones(reps) {
     const redKey = (r._red || '').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const redBadge = r._red
-      ? `<span class="badge badge-${redKey}">${r._red}</span>`
+      ? `<span class="badge badge-${redKey}">${esc(r._red)}</span>`
       : '';
     return `
       <div class="peticion-card">
         <div class="peticion-card-header">
           <div>
-            <div class="peticion-lider">${r['Nombre Líder'] || '—'}</div>
+            <div class="peticion-lider">${esc(r['Nombre Líder']) || '—'}</div>
             <div style="font-size:0.72rem;color:var(--muted);margin-top:2px">
-              L12: ${r['Líder de 12'] || '—'}
+              L12: ${esc(r['Líder de 12']) || '—'}
             </div>
           </div>
           <div style="text-align:right">
@@ -1712,12 +2076,12 @@ function renderPeticiones(reps) {
             <div style="margin-top:4px">${redBadge}</div>
           </div>
         </div>
-        <div class="peticion-texto">"${(r['Peticiones y Notas'] || '').trim()}"</div>
+        <div class="peticion-texto">"${esc((r['Peticiones y Notas'] || '').trim())}"</div>
         <div class="peticion-meta">
           <span style="font-size:0.72rem;color:var(--muted)">
             👥 ${r['Total Asistentes'] || 0} asistentes
           </span>
-          ${r['Tema'] ? `<span style="font-size:0.72rem;color:var(--muted)">· 📖 ${r['Tema']}</span>` : ''}
+          ${r['Tema'] ? `<span style="font-size:0.72rem;color:var(--muted)">· 📖 ${esc(r['Tema'])}</span>` : ''}
         </div>
       </div>`;
   }).join('');
