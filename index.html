@@ -643,10 +643,18 @@ textarea { resize: vertical; min-height: 88px; }
 
     <div class="field" id="r-lider-wrap" style="display:none">
       <label>Tu nombre (líder de célula) <span class="req">*</span></label>
-      <select id="r-lider" onchange="updateProg(2)">
+      <select id="r-lider" onchange="cargarRedesDeLider(); updateProg(2)">
         <option value="">— Selecciona tu nombre —</option>
       </select>
       <p class="hint">Solo aparecen los líderes inscritos bajo tu ministerio</p>
+    </div>
+
+    <div class="field" id="r-red-wrap" style="display:none">
+      <label>¿De cuál célula es este reporte? <span class="req">*</span></label>
+      <select id="r-red-celula" onchange="updateProg(2)">
+        <option value="">— Selecciona la red de la célula —</option>
+      </select>
+      <p class="hint">Si lideras varias células (p. ej. Jóvenes y Teens), elige la que estás reportando</p>
     </div>
 
     <div class="field">
@@ -817,6 +825,8 @@ const BACKEND_URL = "https://script.google.com/macros/s/AKfycbzhgKbbt2J40z6P00Hq
 
 // Mapa de líderes cargado desde el backend
 let mapaLideres = {};
+// Mapa de redes (células) por líder: { nombre: [red, ...] }
+let mapaReds = {};
 
 // ── INIT ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -832,6 +842,7 @@ async function cargarLideres() {
     const json = await res.json();
     if (json.success) {
       mapaLideres = json.data;
+      mapaReds    = json.reds || {};
     }
   } catch(e) {
     console.warn("No se pudieron cargar líderes:", e);
@@ -843,6 +854,10 @@ function filtrarLideres() {
   const l12 = document.getElementById('r-l12').value;
   const wrap = document.getElementById('r-lider-wrap');
   const sel  = document.getElementById('r-lider');
+
+  // Al cambiar de L12 se reinicia la red de célula
+  document.getElementById('r-red-wrap').style.display = 'none';
+  document.getElementById('r-red-celula').value = '';
 
   if (!l12) { wrap.style.display = 'none'; return; }
 
@@ -858,6 +873,30 @@ function filtrarLideres() {
       sel.appendChild(opt);
     });
   }
+  wrap.style.display = 'block';
+}
+
+// ── CARGAR REDES (CÉLULAS) DEL LÍDER ──────────────
+function cargarRedesDeLider() {
+  const lider = document.getElementById('r-lider').value;
+  const wrap  = document.getElementById('r-red-wrap');
+  const sel   = document.getElementById('r-red-celula');
+
+  if (!lider) { wrap.style.display = 'none'; sel.value = ''; return; }
+
+  const todas   = ['Familias','Hombres','Mujeres','Jóvenes','Rocas','Teens','Kids'];
+  const propias = mapaReds[lider] || [];
+  const lista   = propias.length ? propias : todas;
+
+  sel.innerHTML = '<option value="">— Selecciona la red de la célula —</option>';
+  lista.forEach(r => {
+    const o = document.createElement('option');
+    o.value = r; o.textContent = r; sel.appendChild(o);
+  });
+
+  // Si el líder tiene una sola célula, la dejamos preseleccionada
+  if (lista.length === 1) sel.value = lista[0];
+
   wrap.style.display = 'block';
 }
 
@@ -923,10 +962,11 @@ function updateProg(form) {
     const filled = [
       document.getElementById('r-l12').value,
       document.getElementById('r-lider').value,
+      document.getElementById('r-red-celula').value,
       document.getElementById('r-fecha').value,
       getChip('r-realizada'),
     ].filter(Boolean).length;
-    const pct = Math.min(100, Math.round((filled / 4) * 100));
+    const pct = Math.min(100, Math.round((filled / 5) * 100));
     document.getElementById('pb2').style.width = pct + '%';
     document.getElementById('pl2').textContent = pct + '%';
   }
@@ -974,11 +1014,12 @@ async function enviarInscripcion() {
 async function enviarReporte() {
   const l12    = document.getElementById('r-l12').value;
   const lider  = document.getElementById('r-lider').value;
+  const red    = document.getElementById('r-red-celula').value;
   const fecha  = document.getElementById('r-fecha').value;
   const real   = getChip('r-realizada');
 
-  if (!l12 || !lider || !fecha || !real) {
-    alert('Por favor completa los campos de identificación y si se realizó la célula.');
+  if (!l12 || !lider || !red || !fecha || !real) {
+    alert('Por favor completa los campos de identificación (incluida la red de la célula) y si se realizó la célula.');
     return;
   }
 
@@ -986,6 +1027,7 @@ async function enviarReporte() {
     action: "reporte",
     lider12: l12,
     nombreLider: lider,
+    red: red,
     fechaCelula: fecha,
     seRealizo: real,
     motivoNoRealizada: document.getElementById('r-motivo').value,

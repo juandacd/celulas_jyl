@@ -486,8 +486,10 @@ function getLideresPorMinisterio() {
     const headers    = data[0];
     const idxNombre  = headers.indexOf("Nombre Líder");
     const idxLider12 = headers.indexOf("Líder de 12");
+    const idxRed     = headers.indexOf("Red");
 
-    const mapa = {};
+    const mapa = {};   // { lider12: [nombre, ...] }
+    const reds = {};   // { nombre: [red, ...] }  → para que el formulario sepa las células de cada líder
     for (let i = 1; i < data.length; i++) {
       const nombre  = (data[i][idxNombre]  || "").toString().trim();
       const lider12 = (data[i][idxLider12] || "").toString().trim();
@@ -495,10 +497,17 @@ function getLideresPorMinisterio() {
         if (!mapa[lider12]) mapa[lider12] = [];
         if (!mapa[lider12].includes(nombre)) mapa[lider12].push(nombre);
       }
+      if (nombre && idxRed >= 0) {
+        const red = (data[i][idxRed] || "").toString().trim();
+        if (red) {
+          if (!reds[nombre]) reds[nombre] = [];
+          if (!reds[nombre].includes(red)) reds[nombre].push(red);
+        }
+      }
     }
 
     return ContentService
-      .createTextOutput(JSON.stringify({ success: true, data: mapa }))
+      .createTextOutput(JSON.stringify({ success: true, data: mapa, reds: reds }))
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {

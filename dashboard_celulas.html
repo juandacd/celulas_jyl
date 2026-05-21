@@ -681,6 +681,44 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
 }
 @media(max-width: 640px) { .detalle-modal { padding: 22px 16px; } }
 
+/* ── DESTACADOS (leaderboards) ───────────────────── */
+.dest-subtitle {
+  font-family: 'Lora', serif;
+  font-size: 0.95rem; color: var(--brown-light);
+  margin-bottom: 14px;
+}
+.destacados-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+.lb-card {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+}
+.lb-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.8rem; font-weight: 700; color: var(--ink);
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.lb-ico { font-size: 1rem; flex-shrink: 0; }
+.lb-list { display: flex; flex-direction: column; gap: 9px; }
+.lb-row { display: flex; align-items: center; gap: 10px; font-size: 0.82rem; }
+.lb-rank {
+  width: 20px; flex-shrink: 0; text-align: center;
+  font-weight: 700; color: var(--muted); font-size: 0.85rem;
+}
+.lb-name {
+  flex: 1; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lb-row.is-top .lb-name { font-weight: 700; }
+.lb-val { font-weight: 700; color: var(--gold); white-space: nowrap; }
+.lb-empty { font-size: 0.8rem; color: var(--muted); text-align: center; padding: 10px 0; }
+
 </style>
 </head>
 <body>
@@ -912,6 +950,23 @@ tbody tr:hover { background: rgba(107,82,224,0.07); }
       </div>
     </div>
 
+    <!-- DESTACADOS -->
+    <div class="card" id="card-destacados">
+      <div class="card-header">
+        <div class="card-title-row">
+          <div class="card-icon">🏆</div>
+          <div class="card-title">Destacados</div>
+        </div>
+        <span style="font-size:0.78rem; color:var(--muted)" id="destacados-periodo"></span>
+      </div>
+
+      <div class="dest-subtitle">📍 Por célula</div>
+      <div class="destacados-grid" id="dest-celulas"></div>
+
+      <div class="dest-subtitle solo-admin" style="margin-top:26px">👑 Por ministerio (Líder de 12)</div>
+      <div class="destacados-grid solo-admin" id="dest-ministerios"></div>
+    </div>
+
     <!-- TABLA DE REPORTES -->
     <div class="card">
       <div class="card-header">
@@ -1113,35 +1168,40 @@ async function iniciarDashboard(dash, pass) {
   userRol     = dash.rol || 'admin';
   userLider12 = dash.lider12 || '';
 
-  const [repJson, celJson] = await Promise.all([
-    fetch(`${BACKEND}?action=getReportes&pass=${encodeURIComponent(pass)}`).then(r => r.json()),
-    fetch(`${BACKEND}?action=getInscripciones&pass=${encodeURIComponent(pass)}`).then(r => r.json())
-  ]);
+  // Todo el flujo dentro de try/finally: si el backend falla (404, HTML en vez
+  // de JSON, etc.) mostramos el error y SIEMPRE quitamos el spinner.
+  try {
+    const [repJson, celJson] = await Promise.all([
+      fetch(`${BACKEND}?action=getReportes&pass=${encodeURIComponent(pass)}`).then(r => r.json()),
+      fetch(`${BACKEND}?action=getInscripciones&pass=${encodeURIComponent(pass)}`).then(r => r.json())
+    ]);
 
-  if (repJson.success) {
-    reportes     = repJson.data;
-    reportesOrig = repJson.data;
-    poblarFiltroL12(reportes);
+    if (repJson.success) {
+      reportes     = repJson.data;
+      reportesOrig = repJson.data;
+      poblarFiltroL12(reportes);
+    }
+
+    if (celJson.success) {
+      celulas     = celJson.data;
+      celulasOrig = celJson.data;
+      poblarFiltroL12Celulas(celulas);
+      poblarFiltroGlobalL12();
+    }
+
+    document.getElementById('last-update').textContent =
+      'Actualizado: ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+
+    aplicarPermisos();
+    // Arrancar con semana anterior y que ese filtro renderice todo
+    document.getElementById('filtro-periodo').value = 'semana-anterior';
+    aplicarFiltroGlobal();
+  } catch (e) {
+    console.error('Error al cargar el dashboard:', e);
+    toast('No se pudieron cargar los datos (¿backend caído o URL incorrecta?): ' + (e && e.message ? e.message : e));
+  } finally {
+    showLoading(false);
   }
-
-  if (celJson.success) {
-    celulas     = celJson.data;
-    celulasOrig = celJson.data;
-    poblarFiltroL12Celulas(celulas);
-    poblarFiltroGlobalL12();
-  }
-
-  document.getElementById('last-update').textContent =
-    'Actualizado: ' + new Date().toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
-
-  // Aplicar permisos según el rol (oculta filtros de ministerio a no-admin)
-  aplicarPermisos();
-
-  // Arrancar con semana anterior y que ese filtro renderice todo
-  document.getElementById('filtro-periodo').value = 'semana-anterior';
-  aplicarFiltroGlobal();
-
-  showLoading(false);
 }
 
 // ── PERMISOS POR ROL ───────────────────────────────
@@ -1608,7 +1668,7 @@ function filtrarTabla() {
     if (buscar && !lider.includes(buscar)) return false;
     if (l12 && r['Líder de 12'] !== l12 && r['Nombre Líder'] !== l12) return false;
     if (red) {
-      const redLider = redPorLider[r['Nombre Líder']] || '';
+      const redLider = (r['Red Célula'] || '').toString().trim() || redPorLider[r['Nombre Líder']] || '';
       if (!redLider.includes(red)) return false;
     }
     if (realizo === 'si') {
@@ -1643,7 +1703,7 @@ function filtrarTabla() {
     reportesFiltrados.forEach(r => {
       const realizado = (r['Se Realizó'] || '').toLowerCase();
       const siRealizo = realizado.includes('sí') || realizado.includes('si');
-      const redLider  = redPorLider[r['Nombre Líder']] || '';
+      const redLider  = (r['Red Célula'] || '').toString().trim() || redPorLider[r['Nombre Líder']] || '';
       const badgeRed  = redLider ? `<span class="badge badge-${redLider.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${esc(redLider)}</span>` : '—';
 
       html += `<tr>
@@ -1855,7 +1915,7 @@ function aplicarFiltroGlobal() {
       const fecha = new Date(r['Fecha Célula']);
       if (isNaN(fecha)) return false;
       // Excluir Teens de métricas principales
-      const redLider = redPorLiderMetricas[r['Nombre Líder']] || '';
+      const redLider = (r['Red Célula'] || '').toString().trim() || redPorLiderMetricas[r['Nombre Líder']] || '';
       if (redLider === 'Teens') return false;
       return fecha >= desde && fecha <= hasta;
     });
@@ -1925,6 +1985,7 @@ function aplicarFiltroGlobal() {
   setText('m-nuevos-label',  `Nuevos ${labelPeriodo}`);
   setText('m-iglesia-label', `Fueron a S1 ${labelPeriodo}`);
   setText('m-rep-label',     `Reportes ${labelPeriodo}`);
+  setText('destacados-periodo', labelPeriodo);
 
   const porRed = {};
   celulasFiltradas.forEach(c => {
@@ -1955,8 +2016,9 @@ function aplicarFiltroGlobal() {
 
   const redMap = {};
   celulasOrig.forEach(c => { redMap[c.nombre] = c.red; });
-  reportesFiltrados.forEach(r => { r._red = redMap[r['Nombre Líder']] || ''; });
+  reportesFiltrados.forEach(r => { r._red = (r['Red Célula'] || '').toString().trim() || redMap[r['Nombre Líder']] || ''; });
   renderPeticiones(reportesFiltrados);
+  renderDestacados(reportesFiltrados);
 }
 
 function toggleFechasCustom() {
@@ -2087,6 +2149,75 @@ function renderPeticiones(reps) {
   }).join('');
 }
 
+// ── DESTACADOS (rankings por célula y por ministerio) ──
+function renderDestacados(reps) {
+  const esSi = r => {
+    const v = (r['Se Realizó'] || '').toLowerCase();
+    return v.includes('sí') || v.includes('si');
+  };
+  const n = (r, k) => parseInt(r[k] || 0) || 0;
+  const realizadas = reps.filter(esSi);
+
+  // Agrupa los reportes realizados por un campo (célula = Nombre Líder, ministerio = Líder de 12)
+  const agrupar = (keyFn) => {
+    const m = {};
+    realizadas.forEach(r => {
+      const k = (keyFn(r) || '').toString().trim() || '—';
+      if (!m[k]) m[k] = { nombre: k, asis: 0, nuevos: 0, s1: 0, veces: 0 };
+      m[k].asis   += n(r, 'Total Asistentes');
+      m[k].nuevos += n(r, 'Visitantes Nuevos');
+      m[k].s1     += n(r, 'Asistieron Iglesia');
+      m[k].veces  += 1;
+    });
+    return Object.values(m).map(o => ({
+      ...o,
+      promAsis:   o.veces ? Math.round(o.asis / o.veces) : 0,
+      promNuevos: o.veces ? Math.round((o.nuevos / o.veces) * 10) / 10 : 0
+    }));
+  };
+
+  // Una célula = líder + red (un líder puede tener varias células: Jóvenes, Teens...)
+  const cel = agrupar(r => {
+    const nom = (r['Nombre Líder'] || '').toString().trim();
+    const red = (r['Red Célula'] || '').toString().trim();
+    return red ? `${nom} · ${red}` : nom;
+  });
+  const min = agrupar(r => r['Líder de 12']);
+
+  const medalla = i => ['🥇', '🥈', '🥉'][i] || (i + 1) + '.';
+
+  // Construye un mini-leaderboard (top 5) ordenado por valKey
+  const lb = (titulo, ico, arr, valKey, sufijo) => {
+    const top = arr.filter(o => (o[valKey] || 0) > 0)
+      .sort((a, b) => b[valKey] - a[valKey])
+      .slice(0, 5);
+    const filas = top.length
+      ? top.map((o, i) => `
+        <div class="lb-row${i === 0 ? ' is-top' : ''}">
+          <span class="lb-rank">${medalla(i)}</span>
+          <span class="lb-name">${esc(o.nombre)}</span>
+          <span class="lb-val">${o[valKey]}${sufijo}</span>
+        </div>`).join('')
+      : `<div class="lb-empty">Sin datos en este período</div>`;
+    return `<div class="lb-card">
+      <div class="lb-title"><span class="lb-ico">${ico}</span> ${titulo}</div>
+      <div class="lb-list">${filas}</div>
+    </div>`;
+  };
+
+  document.getElementById('dest-celulas').innerHTML =
+    lb('Más asistentes (prom.)', '📈', cel, 'promAsis', '') +
+    lb('Más visitantes nuevos',  '🌍', cel, 'nuevos',   '') +
+    lb('Más constantes',         '🔥', cel, 'veces',    ' reun.') +
+    lb('Más llevan a S1',        '⛪', cel, 's1',       '');
+
+  document.getElementById('dest-ministerios').innerHTML =
+    lb('Más constantes',               '🔥', min, 'veces',      ' reun.') +
+    lb('Más asistentes (prom.)',       '📈', min, 'promAsis',   '') +
+    lb('Más ganadores (prom. nuevos)', '🌍', min, 'promNuevos', '') +
+    lb('Más llevan a S1',              '⛪', min, 's1',         '');
+}
+
 function renderPromedios(reps) {
   // Usa siempre reportesOrig para el promedio histórico completo
   const datos = reps || reportesOrig;
@@ -2096,7 +2227,7 @@ function renderPromedios(reps) {
   celulasOrig.forEach(c => { redPorLiderProm[c.nombre] = c.red; });
 
   datos.forEach(r => {
-      if ((redPorLiderProm[r['Nombre Líder']] || '') === 'Teens') return;
+      if (((r['Red Célula'] || '').toString().trim() || redPorLiderProm[r['Nombre Líder']] || '') === 'Teens') return;
       const realizo = (r['Se Realizó'] || '').toLowerCase();
     if (!realizo.includes('sí') && !realizo.includes('si')) return;
     const fecha = new Date(r['Fecha Célula']);
